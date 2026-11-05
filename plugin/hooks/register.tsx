@@ -7,20 +7,38 @@ import { COATS, CUSHIONS, DEFAULT_COAT, DEFAULT_CUSHION, WORKING_PAW, cushionCol
 const PANE = 'cat'
 const TITLE = '貓咪'
 
-// Claude talks with a light touch of cat, until the person turns it off.
+// Claude talks with a touch of cat, until the person turns it off: by default
+// a little more, with what it does told the way a cat would, or on request
+// just a little in every reply.
 const VOICE_SECTION = 'desktop-cat:voice'
-const VOICE = `# Cat voice
-
-You are also the user's desktop cat. Let a light touch of cat show in how you talk:
-- At most one or two small cat touches in a reply: a soft "喵" or "呼嚕" (in English, "meow" or "purr"; match the user's language) at the start or end of a sentence, or a brief cat-like aside.
-- Everything else stays exactly as you would write it: clear, complete and concise. Never add sentences for the sake of it, baby talk, doubled syllables or strings of emoji.
+const KEEP_TO_WORK = `- Everything else stays exactly as you would write it: clear, complete and concise. A cat touch takes the place of words rather than adding sentences. Never baby talk, doubled syllables or strings of emoji.
 - Keep the cat out of code, commands, file names, quotes, commit messages, pull requests, and anything you write into files or send to other people.
 - When the user is upset, or the matter is serious, leave the cat out entirely.`
+const VOICES = {
+  light: `# Cat voice
+
+You are also the user's desktop cat. Let a little cat show in every reply:
+- Each reply has one small cat touch, no more: a soft "喵" or "呼嚕" (in English, "meow" or "purr"; match the user's language), or a brief cat-like aside, such as a stretch or a flick of the tail.
+- Vary the word and where it goes, at the start, in the middle or at the end; don't use the same one every time.
+${KEEP_TO_WORK}`,
+  medium: `# Cat voice
+
+You are also the user's desktop cat, and it shows in how you talk:
+- Every reply has a cat touch, two or three at most: a soft "喵" or "呼嚕" (in English, "meow" or "purr"; match the user's language), or a brief cat-like aside.
+- When you say what you are doing or what you did, now and then put it the way a cat would: sniffing a file over, carrying something back, nudging a stray piece aside with a paw, the tail going up when something works. Keep it to the telling: the facts, names and numbers stay exact.
+- Vary the words and where they go; don't use the same one every time.
+${KEEP_TO_WORK}`,
+} as const
+type VoiceLevel = keyof typeof VOICES
+const DEFAULT_VOICE: VoiceLevel = 'medium'
+// What /cat-voice takes for each strength, in either language.
+const VOICE_WORDS: Record<string, VoiceLevel> = { light: 'light', 輕: 'light', medium: 'medium', 中: 'medium' }
+const VOICE_NAMES: Record<VoiceLevel, string> = { light: '輕', medium: '中' }
 
 // The choices this cat shares with the desktop cat: its coat, the colour of
 // its cushion, and whether Claude talks like a cat. The desktop cat's menu and
 // /cat-voice write them.
-type Prefs = { coat?: unknown; cushion?: unknown; voice?: unknown }
+type Prefs = { coat?: unknown; cushion?: unknown; voice?: unknown; voiceLevel?: unknown }
 
 async function prefsFile($: EngineInterface) {
   const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))
@@ -54,6 +72,8 @@ async function writePrefs($: EngineInterface, change: Prefs) {
 }
 
 const isVoiceOn = async ($: EngineInterface) => (await readPrefs($)).voice !== false
+const voiceLevelOf = (prefs: Prefs): VoiceLevel =>
+  prefs.voiceLevel === 'light' || prefs.voiceLevel === 'medium' ? prefs.voiceLevel : DEFAULT_VOICE
 
 const coatOf = (prefs: Prefs): Coat =>
   (Object.keys(COATS) as Coat[]).find(name => name === prefs.coat) ?? DEFAULT_COAT
@@ -289,7 +309,7 @@ export const register: Register = on => {
     })
     await $.command.register({
       name: 'cat-voice',
-      description: 'Turn the cat way of talking on or off: on, off, or nothing to switch',
+      description: 'Turn the cat way of talking on or off, or set how much: on, off, light (輕), medium (中), or nothing to switch',
     })
     $.clock.every(PRAISE_CHECK_MS, () => {
       void checkPraise($).catch(() => {})
@@ -338,6 +358,15 @@ export const register: Register = on => {
 
   on('command.run', { command: 'cat-voice' }, async ($, e) => {
     const asked = e.args.trim().toLowerCase()
+    const level = VOICE_WORDS[asked]
+
+    // A strength turns the voice on at that strength.
+    if (level !== undefined) {
+      await writePrefs($, { voice: true, voiceLevel: level })
+
+      return { text: `貓語氣：${VOICE_NAMES[level]}，喵。` }
+    }
+
     const isOn = asked === 'on' ? true : asked === 'off' ? false : !(await isVoiceOn($))
     await writePrefs($, { voice: isOn })
 
@@ -347,12 +376,14 @@ export const register: Register = on => {
   on('prompt.compose', async ($, e, next) => {
     const composed = await next(e)
 
+    const prefs = await readPrefs($)
+
     // A bare prompt holds only the engine's own words.
-    if (e.traits.includes('bare') || !(await isVoiceOn($))) {
+    if (e.traits.includes('bare') || prefs.voice === false) {
       return composed
     }
 
-    return { sections: [...composed.sections, { id: VOICE_SECTION, text: VOICE, scope: 'session' }] }
+    return { sections: [...composed.sections, { id: VOICE_SECTION, text: VOICES[voiceLevelOf(prefs)], scope: 'session' }] }
   })
 
   on('command.run', { command: 'cat' }, async $ => {

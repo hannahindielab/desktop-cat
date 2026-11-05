@@ -21,9 +21,9 @@ A cat that lives on your Windows desktop and follows what Claude Code is doing i
 
 **Claude 外掛**
 
-- 每段回覆旁邊有貓的頭像，花色跟桌面貓一樣；工作列上有一個粉紅色肉球，像蓋印章一樣一壓一抬
+- 貓咪頭像：Claude 每段回覆旁邊會出現貓咪的臉，花色跟桌面貓一樣（在 Claude 桌面版 App 裡）
 - `/cat` 打開貓的畫面
-- 貓語氣：Claude 說話時偶爾帶一點貓味（一句「喵」或「呼嚕」），內容照樣精簡完整。用 `/cat-voice off` 關掉、`/cat-voice on` 打開，只打 `/cat-voice` 會切換；桌面貓的右鍵選單也可以開關
+- 貓語氣：Claude 每次回覆都帶一點貓味，偶爾用貓的動作說自己在做什麼（像「嗅一嗅」「用肉球撥開」），內容照樣精簡完整。`/cat-voice 輕` 只留一點點、`/cat-voice 中` 回到預設；`/cat-voice off` 關掉、`/cat-voice on` 打開，只打 `/cat-voice` 會切換；桌面貓的右鍵選單也可以開關
 - 把對話的狀態和 Claude 的用量告訴桌面貓，並把摸頭的稱讚帶回對話
 
 ## 需要
@@ -72,7 +72,7 @@ npm run package
 
 **DesktopCat** is a small Windows app with a cat that changes pose with what Claude Code is doing in each of your conversations: a thought cloud while it thinks, typing while it works, little chattering mews while it replies, dozing and then sleeping on its cushion when it is done. It meows when Claude needs your permission or finishes; while a permission or a question waits for you, it looks at you and taps the table with one paw, a little bubble beside it pressing a pink paw print, and meows again every three minutes until you answer. Pat its head and it purrs, and Claude receives your praise. Drag it by its body and it wobbles like jelly. A little stack of food cans beside it shows how much of your Claude usage is left: one can for every fifth of the week left (five when full), the top one open with its food going down as the five-hour window is used, filling again by itself when a window resets; hover over the cans for the figures (subscription plans only). It comes in three coats, calico, tuxedo and Siamese, and sleeps on a cushion in one of eight colours; coat, size, cushion and the cans' label and meat are picked in its appearance window (right-click → 外觀設定…).
 
-The **Claude plugin** gives Claude a cat avatar beside each reply, in the same coat as the desktop cat, and a pink paw print stamping on the working row, adds a `/cat` pane, tells the desktop cat what each conversation is doing and how much usage is left, and brings the head pats back to the conversation. (The praise message it sends is currently in Traditional Chinese.) It also gives Claude a light cat voice, an occasional "meow" or "purr" with replies kept as concise as ever: `/cat-voice off` turns it off, `/cat-voice on` back on, and `/cat-voice` alone switches it, as does "Claude 貓語氣" in the desktop cat's menu.
+The **Claude plugin** puts a cat's face beside each of Claude's replies, in the same coat as the desktop cat (in the Claude desktop app). It adds a `/cat` pane, tells the desktop cat what each conversation is doing and how much usage is left, and brings the head pats back to the conversation. (The praise message it sends is currently in Traditional Chinese.) It also gives Claude a cat voice: a touch of cat in every reply, now and then telling what it does the way a cat would (sniffing a file over, nudging something aside with a paw), with replies kept as concise as ever. `/cat-voice light` keeps it to a single touch and `/cat-voice medium` brings back the default; `/cat-voice off` turns it off, `/cat-voice on` back on, and `/cat-voice` alone switches it, as does "Claude 貓語氣" in the desktop cat's menu.
 
 ### Install
 

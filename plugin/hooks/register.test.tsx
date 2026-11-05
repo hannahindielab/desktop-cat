@@ -590,6 +590,46 @@ test('the cat voice joins the prompt until it is turned off, and comes back on',
   expect(await voiced()).toBe(true)
 })
 
+test('the cat voice is medium unless asked to be light, and a strength turns it on', async ($, on) => {
+  const files = desktopFiles(on, { voice: false })
+  on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude.', scope: 'shared' }] }))
+  const voiceText = async () =>
+    (
+      await $.prompt.compose({
+        model: 'claude-opus-5-5',
+        promptModel: 'claude-opus-5-5',
+        surfaces: ['desktop'],
+        tools: [],
+        outputStyle: null,
+        traits: [],
+      })
+    ).sections.find(section => section.id === 'desktop-cat:voice')?.text
+  const voice = (args: string) =>
+    $.command.run({
+      command: 'cat-voice',
+      args,
+      origin: { kind: 'composer' },
+      presentation: { isFullscreen: false, columns: 80 },
+    })
+
+  await voice('on')
+  expect(await voiceText()).toContain('sniffing a file over')
+  expect((await voice('中')).text).toContain('中')
+  expect(await voiceText()).toContain('sniffing a file over')
+  expect(JSON.parse(files.get(PREFS) ?? '{}')).toEqual({ voice: true, voiceLevel: 'medium' })
+
+  expect((await voice('light')).text).toContain('輕')
+  const light = await voiceText()
+  expect(light).toContain('one small cat touch')
+  expect(light).not.toContain('sniffing')
+
+  // Switched off and on again, it keeps its strength.
+  await voice('off')
+  expect(await voiceText()).toBeUndefined()
+  await voice('on')
+  expect(await voiceText()).toContain('one small cat touch')
+})
+
 test('the desktop cat turning the voice off is heard here too', async ($, on) => {
   const files = desktopFiles(on, { voice: false })
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude.', scope: 'shared' }] }))
