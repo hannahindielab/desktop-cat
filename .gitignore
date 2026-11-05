@@ -1,0 +1,11 @@
+# Installed packages and builds
+node_modules/
+dist/
+
+# Written by Claude Code for editors; not part of the plugin
+plugin/.claude-plugin/types/
+
+# Made by the system or an editor
+*.log
+.DS_Store
+Thumbs.db

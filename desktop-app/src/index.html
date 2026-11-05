@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; media-src 'self'; connect-src 'self'"
+    />
+    <title>桌面貓</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      /* Changing size, the cat fades out quickly, and back in at its new size. */
+      body {
+        transition: opacity 0.15s ease-out;
+      }
+
+      body.resizing {
+        opacity: 0;
+        transition: opacity 0.1s ease-in;
+      }
+
+      /* Set in from the window's edges by the room it leaves to bend into.
+         Its box lets the pointer through to the cans behind it. */
+      #cat {
+        position: absolute;
+        inset: 0;
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.28));
+        pointer-events: none;
+      }
+
+      /* Only what is painted counts as the cat; the gaps let clicks through. */
+      #cat svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      #cat svg * {
+        pointer-events: visiblePainted;
+        cursor: grab;
+      }
+
+      body.dragging #cat svg * {
+        cursor: grabbing;
+      }
+
+      /* The places that like being touched answer with a hand, not a grab. */
+      body[data-zone] #cat svg * {
+        cursor: pointer;
+      }
+
+      /* The cans stand on the desk just right of the tail, set in like the
+         cat and behind it, placed beside the medium cat:
+         the full stack 55 of its 200 wide, its left edge 159 across and its
+         feet 8 above the cat's. In a spot of their own, so the cat bending
+         as it is carried leaves them standing still. */
+      #cans {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      #cans[hidden] {
+        display: none;
+      }
+
+      /* Asleep, the cushion is wider than the cat sitting: the cans stand in
+         front of its corner rather than half behind it. */
+      body.lying #cans {
+        z-index: 1;
+      }
+
+      #cans .stack {
+        position: absolute;
+        left: 79.5%;
+        bottom: 4%;
+        width: 27.5%;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
+      }
+
+      #cans svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        pointer-events: none;
+      }
+
+      /* Like the cat, only what is painted counts. */
+      #cans svg * {
+        pointer-events: visiblePainted;
+        cursor: grab;
+      }
+
+      /* The hint over the cans: one line on paper, like the cat's bubbles. */
+      #hint {
+        position: absolute;
+        width: max-content;
+        max-width: calc(100vw - 8px);
+        box-sizing: border-box;
+        padding: 4px 10px;
+        border: 1.5px solid #816c6a;
+        border-radius: 10px;
+        background: #fffdf8;
+        color: #4a3d3b;
+        font: 500 12.5px/1.5 'Microsoft JhengHei UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+        box-shadow: 0 4px 12px rgba(74, 61, 59, 0.2);
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(3px);
+        transition:
+          opacity 0.15s,
+          transform 0.15s;
+      }
+
+      #hint.shown {
+        opacity: 1;
+        transform: none;
+      }
+
+      #hint b {
+        font-weight: 800;
+      }
+
+      #hint .low {
+        color: #c25446;
+      }
+
+      /* At night the paper turns warm dark brown, not black. */
+      @media (prefers-color-scheme: dark) {
+        #hint {
+          border-color: #8e7c79;
+          background: #34302e;
+          color: #f4eeea;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        #hint .low {
+          color: #f2917f;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="cans"><div class="stack"></div></div>
+    <div id="cat"></div>
+    <div id="hint" role="tooltip"></div>
+    <script src="poses.js"></script>
+    <script src="cans.js"></script>
+    <script src="sound.js"></script>
+    <script src="renderer.js"></script>
+  </body>
+</html>

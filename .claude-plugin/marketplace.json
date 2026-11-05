@@ -1,0 +1,12 @@
+{
+  "name": "desktop-cat",
+  "description": "A cat for Claude Code, and a desktop cat that follows what Claude is doing",
+  "owner": { "name": "hannahindielab" },
+  "plugins": [
+    {
+      "name": "desktop-cat",
+      "source": "./plugin",
+      "description": "Gives Claude a cat form and links it to the DesktopCat app, which shows what Claude is doing in every conversation"
+    }
+  ]
+}

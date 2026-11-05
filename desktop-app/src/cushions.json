@@ -1,0 +1,50 @@
+[
+  {
+    "id": "matcha",
+    "label": "抹茶綠",
+    "colour": "#9FAB87",
+    "seam": "#7D8565"
+  },
+  {
+    "id": "milk-tea",
+    "label": "奶茶米",
+    "colour": "#E0D5C2",
+    "seam": "#B0A692"
+  },
+  {
+    "id": "dusty-pink",
+    "label": "霧粉",
+    "colour": "#DFAAAD",
+    "seam": "#AF8482"
+  },
+  {
+    "id": "dusty-blue",
+    "label": "霧藍",
+    "colour": "#9DB7CD",
+    "seam": "#7B8E9A"
+  },
+  {
+    "id": "lavender",
+    "label": "薰衣草",
+    "colour": "#B7A9D0",
+    "seam": "#8F839C"
+  },
+  {
+    "id": "night-sky",
+    "label": "夜空藍",
+    "colour": "#3D3B63",
+    "seam": "#302E4A"
+  },
+  {
+    "id": "berry",
+    "label": "莓果紅",
+    "colour": "#B84C67",
+    "seam": "#903B4D"
+  },
+  {
+    "id": "cement",
+    "label": "水泥灰",
+    "colour": "#8E8E90",
+    "seam": "#6F6E6C"
+  }
+]

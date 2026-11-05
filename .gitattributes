@@ -1,0 +1,6 @@
+# Text files keep plain line endings in the repository, on every computer.
+* text=auto eol=lf
+
+*.wav binary
+*.png binary
+*.ico binary

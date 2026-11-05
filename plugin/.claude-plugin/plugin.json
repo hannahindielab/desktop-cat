@@ -1,0 +1,6 @@
+{
+  "name": "desktop-cat",
+  "version": "1.14.0",
+  "description": "Gives Claude a cat form: a cat avatar beside each reply, a stamping paw print on the working row, a /cat pane, and a link to the desktop cat that reports each conversation's state and brings its petting back as praise",
+  "types": "./types/index.d.ts"
+}

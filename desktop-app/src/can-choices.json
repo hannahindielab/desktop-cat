@@ -1,0 +1,79 @@
+{
+  "labels": [
+    {
+      "id": "coral",
+      "label": "珊瑚粉",
+      "colour": "#EE9A86"
+    },
+    {
+      "id": "matcha",
+      "label": "抹茶綠",
+      "colour": "#9FAB87"
+    },
+    {
+      "id": "milk-tea",
+      "label": "奶茶米",
+      "colour": "#E0D5C2"
+    },
+    {
+      "id": "dusty-pink",
+      "label": "霧粉",
+      "colour": "#DFAAAD"
+    },
+    {
+      "id": "dusty-blue",
+      "label": "霧藍",
+      "colour": "#9DB7CD"
+    },
+    {
+      "id": "lavender",
+      "label": "薰衣草",
+      "colour": "#B7A9D0"
+    },
+    {
+      "id": "night-sky",
+      "label": "夜空藍",
+      "colour": "#3D3B63"
+    },
+    {
+      "id": "berry",
+      "label": "莓果紅",
+      "colour": "#B84C67"
+    },
+    {
+      "id": "cement",
+      "label": "水泥灰",
+      "colour": "#8E8E90"
+    }
+  ],
+  "foods": [
+    {
+      "id": "tuna",
+      "label": "鮪魚",
+      "food": "#C98A76",
+      "dark": "#93584A",
+      "light": "#E4B3A2"
+    },
+    {
+      "id": "salmon",
+      "label": "鮭魚",
+      "food": "#D99282",
+      "dark": "#A35B4C",
+      "light": "#F0BDB1"
+    },
+    {
+      "id": "chicken",
+      "label": "雞肉",
+      "food": "#C9A07F",
+      "dark": "#946A4C",
+      "light": "#E6C7AD"
+    },
+    {
+      "id": "beef",
+      "label": "牛肉",
+      "food": "#B07D63",
+      "dark": "#7E5240",
+      "light": "#CC9C84"
+    }
+  ]
+}
