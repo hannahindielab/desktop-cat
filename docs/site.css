@@ -1,0 +1,737 @@
+/* DesktopCat 桌面貓 — the website's look. Colours come from the cat's own
+   drawings: cream like the milk-tea cushion, the coral of the cans' labels,
+   matcha green, and for dark the night-sky cushion's blue. */
+
+:root {
+  --bg: #fbf6ef;
+  --glow-pink: #ffdfe0;
+  --glow-lilac: #e7e1f7;
+  --glow-blue: #dbe8f7;
+  --surface: #ffffff;
+  --surface-soft: #f6eee3;
+  --ink: #3e302b;
+  --ink-soft: #7d6c65;
+  --line: #ecdfd2;
+  --brand: #ee9a86;
+  --brand-hover: #f2ab9a;
+  --brand-ink: #3a2520;
+  --cta: #4a3832;
+  --cta-hover: #5e4840;
+  --cta-ink: #fff8f0;
+  --link: #b5523c;
+  --matcha: #9fab87;
+  --matcha-soft: #edf0e5;
+  --shadow: 0 12px 32px rgb(74 56 50 / 0.1);
+  --shadow-hover: 0 18px 40px rgb(74 56 50 / 0.16);
+  /* The desktop cat's own shadow at its middle size (200 px), and grown
+     with the large cat at the top of the page; the cans' a little lighter. */
+  --cat-shadow: drop-shadow(0 2px 5px rgb(0 0 0 / 0.28));
+  --cat-shadow-big: drop-shadow(0 4px 11px rgb(0 0 0 / 0.28));
+  --can-shadow: drop-shadow(0 2px 5px rgb(0 0 0 / 0.22));
+  --radius-lg: 28px;
+  --radius-md: 20px;
+  --radius-pill: 999px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #211f2c;
+    --glow-pink: #3b2c42;
+    --glow-lilac: #2d2a48;
+    --glow-blue: #22304a;
+    --surface: #2b2839;
+    --surface-soft: #312d42;
+    --ink: #f5ede4;
+    --ink-soft: #bbb0aa;
+    --line: #423d57;
+    --brand: #f2a592;
+    --brand-hover: #f6b9aa;
+    --brand-ink: #2a1b17;
+    --cta: #f5ede4;
+    --cta-hover: #ffffff;
+    --cta-ink: #2b2839;
+    --link: #f5b4a3;
+    --matcha: #b3be9c;
+    --matcha-soft: #343a33;
+    --shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+    --shadow-hover: 0 18px 40px rgb(0 0 0 / 0.45);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  /* jf open 粉圓 has one weight: hierarchy comes from size and colour. */
+  font: 18px/1.75 'Huninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 3px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+/* No line ends with a lone word or two. */
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.section-head p,
+.hero .lead,
+.donate-note,
+.pose p {
+  text-wrap: balance;
+}
+
+/* Chinese breaks between any two characters: a heading's phrases are kept
+   whole, so a narrow screen breaks it at the comma. */
+.keep {
+  display: inline-block;
+}
+
+:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.wrap {
+  width: min(1080px, 100% - 40px);
+  margin-inline: auto;
+}
+
+section {
+  padding-block: 72px;
+}
+
+.section-head {
+  max-width: 640px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+
+.section-head h2 {
+  font-size: clamp(28px, 4.2vw, 40px);
+}
+
+.section-head p {
+  margin-top: 12px;
+  color: var(--ink-soft);
+}
+
+/* A label like the stickers in the intro video. */
+.pill {
+  display: inline-block;
+  padding: 4px 16px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 12px 28px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: none;
+}
+
+.btn-cta {
+  background: var(--cta);
+  color: var(--cta-ink);
+}
+
+.btn-cta:hover {
+  background: var(--cta-hover);
+}
+
+.btn-ghost {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: transparent;
+}
+
+.btn-ghost:hover {
+  background: var(--surface);
+}
+
+.btn-can {
+  width: 100%;
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+.btn-can:hover {
+  background: var(--brand-hover);
+}
+
+.btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Top bar */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 20px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand img {
+  width: 36px;
+  height: 36px;
+}
+
+.top nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 16px;
+}
+
+.top nav a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.top nav a:hover {
+  color: var(--link);
+}
+
+.top nav .nav-can {
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--brand-ink);
+  white-space: nowrap;
+}
+
+.top nav .nav-can:hover {
+  background: var(--brand-hover);
+  color: var(--brand-ink);
+}
+
+/* The first screen, on the soft glow of the intro video's opening. */
+.hero-band {
+  background:
+    radial-gradient(60% 70% at 8% 18%, var(--glow-pink), transparent 70%),
+    radial-gradient(50% 60% at 92% 12%, var(--glow-lilac), transparent 70%),
+    radial-gradient(55% 60% at 80% 95%, var(--glow-blue), transparent 70%),
+    var(--bg);
+}
+
+/* The title, the words under it and the cat: side by side on wide screens,
+   the cat between title and words on narrow ones. */
+.hero {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-areas:
+    'title art'
+    'copy art';
+  align-items: end;
+  column-gap: 32px;
+  padding-block: 40px 88px;
+}
+
+.hero-title {
+  grid-area: title;
+}
+
+.hero-copy {
+  grid-area: copy;
+  align-self: start;
+}
+
+.hero h1 {
+  margin-top: 20px;
+  font-size: clamp(44px, 7.4vw, 76px);
+  letter-spacing: 0.02em;
+}
+
+.hero .lead {
+  margin-top: 20px;
+  max-width: 30em;
+  font-size: 19px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.fine {
+  margin-top: 16px;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.hero-art {
+  grid-area: art;
+  align-self: center;
+  position: relative;
+  max-width: 440px;
+  justify-self: center;
+  width: 100%;
+}
+
+.hero-art picture img {
+  filter: var(--cat-shadow-big);
+}
+
+.hero-art .cans {
+  position: absolute;
+  right: -6%;
+  bottom: 2%;
+  width: 38%;
+  filter: var(--can-shadow);
+}
+
+/* The intro video */
+.video {
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  background: var(--surface);
+}
+
+.video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+/* Cards */
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.poses {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+.pose {
+  padding: 20px 20px 24px;
+  text-align: center;
+}
+
+.pose img {
+  width: min(180px, 80%);
+  margin: 0 auto 8px;
+  filter: var(--cat-shadow);
+}
+
+.pose h3 {
+  font-size: 20px;
+}
+
+/* Lines break at spaces and commas where they can, anywhere when they must. */
+.pose p {
+  margin-top: 6px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.wide {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  align-items: center;
+  gap: 32px;
+  margin-top: 20px;
+  padding: 28px 36px;
+}
+
+.wide img {
+  filter: var(--can-shadow);
+}
+
+.wide h3 {
+  font-size: 22px;
+}
+
+.wide p {
+  margin-top: 8px;
+  color: var(--ink-soft);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips li {
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--matcha-soft);
+  font-size: 15px;
+}
+
+/* Coats */
+.soft-band {
+  background: var(--surface-soft);
+}
+
+.coats {
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.coat {
+  margin: 0;
+  text-align: center;
+}
+
+.coat img {
+  width: min(220px, 100%);
+  margin-inline: auto;
+  filter: var(--cat-shadow);
+}
+
+.coat p {
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+/* Donations */
+.donate .section-head .pill {
+  margin-bottom: 16px;
+}
+
+.can-choices {
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 900px;
+  margin-inline: auto;
+}
+
+.can-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 24px 24px;
+  text-align: center;
+}
+
+/* One scale for every stack: the same height, each as wide as its cans. */
+.can-choice img {
+  height: 120px;
+  width: auto;
+  filter: var(--can-shadow);
+}
+
+.can-choice h3 {
+  margin-top: 16px;
+  font-size: 22px;
+}
+
+.price {
+  margin: 4px 0 20px;
+  color: var(--link);
+  font-size: 30px;
+  line-height: 1.3;
+}
+
+.price small {
+  font-size: 18px;
+}
+
+.price.free {
+  font-size: 22px;
+  line-height: 1.75;
+}
+
+.can-choice .btn {
+  margin-top: auto;
+}
+
+.donate-note {
+  max-width: 640px;
+  margin: 28px auto 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+  text-align: center;
+}
+
+/* Install: the address to give Claude, and a button to copy it. */
+.install-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 24px 28px;
+}
+
+.install-box:hover {
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
+.install-box code {
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--matcha-soft);
+  font: 17px/1.6 Consolas, 'Courier New', monospace;
+  word-break: break-all;
+}
+
+/* Questions */
+.faq {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.faq details {
+  border-bottom: 1px solid var(--line);
+}
+
+.faq summary {
+  padding: 20px 4px;
+  font-size: 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: '＋';
+  float: right;
+  color: var(--ink-soft);
+}
+
+.faq details[open] summary::after {
+  content: '－';
+}
+
+.faq details p {
+  padding: 0 4px 20px;
+  color: var(--ink-soft);
+}
+
+/* Footer */
+footer {
+  padding-block: 48px 56px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 15px;
+  text-align: center;
+}
+
+footer p + p {
+  margin-top: 8px;
+}
+
+footer .contact {
+  color: var(--ink);
+  font-size: 18px;
+}
+
+@media (max-width: 860px) {
+  .hero {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'title'
+      'art'
+      'copy';
+    padding-block: 16px 64px;
+    text-align: center;
+  }
+
+  .hero .lead {
+    margin-inline: auto;
+  }
+
+  .actions {
+    justify-content: center;
+  }
+
+  .hero-art {
+    max-width: 300px;
+    margin-top: 16px;
+  }
+
+  .poses {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .can-choices {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+
+  .install-box {
+    padding: 20px;
+  }
+
+  .install-box code {
+    font-size: 15px;
+  }
+
+  .install-box .btn {
+    width: 100%;
+  }
+
+  .wide {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .wide img {
+    width: 200px;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  section {
+    padding-block: 56px;
+  }
+
+  .top nav .nav-link {
+    display: none;
+  }
+
+  .brand {
+    gap: 8px;
+    font-size: 17px;
+  }
+
+  .brand img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .top nav .nav-can {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  .actions .btn {
+    width: 100%;
+  }
+
+  .pose {
+    padding: 16px 8px 20px;
+  }
+
+  .pose h3 {
+    font-size: 16px;
+  }
+
+  .coats {
+    gap: 8px;
+  }
+
+  .coat p {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .btn,
+  .card {
+    transition: none;
+  }
+
+  .btn:hover,
+  .card:hover {
+    transform: none;
+  }
+}

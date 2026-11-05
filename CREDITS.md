@@ -35,3 +35,16 @@ covered by this repository's license and may not be redistributed on their own.
 | Typing while working | `desktop-app/src/sounds/typing.wav` | "Keyboard typing fast" by virtualzero on Pixabay |
 | Meow, and the little mews cut from it | `desktop-app/src/sounds/meow.wav`, `mew.wav` | "Cat meow 8 fx" by sound_garage on Pixabay |
 | Purring when petted | `desktop-app/src/sounds/purr.wav` | "Cat purr" by vinodadora on Pixabay |
+
+## Website / 官網
+
+The website in `docs/` was made for this project. Its cat and can pictures are the drawings above, written
+out by `desktop-app/tools/build-site-art.mjs`.
+
+官網（`docs/`）為本專案製作，貓和罐罐的圖就是上面那些圖，用 `desktop-app/tools/build-site-art.mjs` 匯出。
+
+| What | Where it is | Source |
+| --- | --- | --- |
+| The intro video | `docs/media/desktop-cat-intro.mp4` | Made for this project from the desktop cat's own drawings and sounds |
+| The video's music, "Bouncy Pocket" | In the intro video | Made with Suno for this project |
+| The font, jf open 粉圓 | Loaded from Google Fonts, where it is called Huninn | By justfont, under the SIL Open Font License 1.1 |

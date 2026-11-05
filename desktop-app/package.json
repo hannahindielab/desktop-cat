@@ -10,6 +10,7 @@
     "start": "electron .",
     "poses": "node tools/build-poses.mjs",
     "cans": "node tools/build-cans.mjs",
+    "site-art": "node tools/build-site-art.mjs",
     "test": "node --test test/mood.test.js test/praise.test.js test/prefs.test.js test/usage.test.js && electron test/self-test.js",
     "package": "electron-packager . DesktopCat --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --ignore=^/test --ignore=^/dist --ignore=^/tools"
   },

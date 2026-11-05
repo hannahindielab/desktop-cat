@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DesktopCat 桌面貓｜把 Claude 變成貓貓</title>
+    <meta name="description" content="Claude 變成一隻住在你 Windows 桌面上的貓：想事情時頭上冒出雲朵，做事時噠噠噠敲鍵盤，做完了就窩進坐墊睡覺。免費下載。">
+    <meta name="theme-color" content="#fbf6ef" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#211f2c" media="(prefers-color-scheme: dark)">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DesktopCat 桌面貓｜把 Claude 變成貓貓">
+    <meta property="og:description" content="Claude 變成一隻住在你桌面上的貓，想事情、敲鍵盤，做完了喵一聲告訴你，再窩進坐墊睡覺。">
+    <meta property="og:url" content="https://hannahindielab.github.io/desktop-cat/">
+    <meta property="og:image" content="https://hannahindielab.github.io/desktop-cat/media/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="media/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
+    <link rel="stylesheet" href="site.css">
+  </head>
+  <body>
+    <div class="hero-band">
+      <header class="top wrap">
+        <a class="brand" href="#top"><img src="media/icon-64.png" alt="" width="36" height="36">DesktopCat 桌面貓</a>
+        <nav aria-label="頁面">
+          <a class="nav-link" href="#poses">介紹</a>
+          <a class="nav-link" href="#install">安裝</a>
+          <a class="nav-link" href="https://github.com/hannahindielab/desktop-cat">GitHub</a>
+          <a class="nav-can" href="#donate">請貓貓吃罐罐</a>
+        </nav>
+      </header>
+
+      <main id="top">
+        <section class="hero wrap" aria-labelledby="hero-title">
+          <div class="hero-title">
+            <p class="pill">Windows 桌面上的貓 · 免費</p>
+            <h1 id="hero-title">把 Claude<br>變成貓貓</h1>
+          </div>
+          <div class="hero-copy">
+            <p class="lead">Claude 變成一隻住在你桌面上的貓：想事情時頭上冒出雲朵，做事時噠噠噠敲鍵盤，做完了喵一聲告訴你，再窩進坐墊睡覺。</p>
+            <div class="actions">
+              <a class="btn btn-cta" href="#install">免費安裝</a>
+              <a class="btn btn-ghost" href="#video">看 45 秒介紹</a>
+            </div>
+            <p class="fine">搭配 Claude Code 使用 · 全部在你的電腦上運作，不連網路</p>
+          </div>
+          <div class="hero-art">
+            <picture>
+              <source srcset="art/calico-working-still.svg" media="(prefers-reduced-motion: reduce)">
+              <img src="art/calico-working.svg" alt="三花貓坐在小鍵盤前打字" width="440" height="440">
+            </picture>
+            <img class="cans" src="art/cans-usage.svg" alt="" width="170" height="117">
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <section id="video" class="wrap" aria-labelledby="video-title">
+      <div class="section-head">
+        <h2 id="video-title">45 秒看懂桌面貓</h2>
+      </div>
+      <div class="video">
+        <video controls preload="metadata" playsinline poster="media/intro-poster.jpg">
+          <source src="media/desktop-cat-intro.mp4" type="video/mp4">
+        </video>
+      </div>
+    </section>
+
+    <section id="poses" class="wrap" aria-labelledby="poses-title">
+      <div class="section-head">
+        <h2 id="poses-title"><span class="keep">Claude 在做什麼，</span><span class="keep">看貓貓就知道</span></h2>
+        <p>每個對話在做什麼，桌面貓都看得到。不用切回 Claude 的視窗，瞄一眼桌面就知道。</p>
+      </div>
+      <div class="grid poses">
+        <article class="card pose">
+          <picture>
+            <source srcset="art/calico-thinking-still.svg" media="(prefers-reduced-motion: reduce)">
+            <img src="art/calico-thinking.svg" alt="貓的頭上冒出想法雲" width="180" height="180" loading="lazy">
+          </picture>
+          <h3>Claude 貓思考中…</h3>
+          <p>雲朵裡輪流冒出小宇宙、問號和魚</p>
+        </article>
+        <article class="card pose">
+          <picture>
+            <source srcset="art/calico-working-still.svg" media="(prefers-reduced-motion: reduce)">
+            <img src="art/calico-working.svg" alt="貓在小鍵盤上打字" width="180" height="180" loading="lazy">
+          </picture>
+          <h3><span class="keep">Claude 貓工作中，</span><span class="keep">噠噠噠</span></h3>
+          <p>讀檔案、改程式的時候</p>
+        </article>
+        <article class="card pose">
+          <picture>
+            <source srcset="art/calico-talking-still.svg" media="(prefers-reduced-motion: reduce)">
+            <img src="art/calico-talking.svg" alt="貓旁邊有說話的對話框" width="180" height="180" loading="lazy">
+          </picture>
+          <h3><span class="keep">聽到喵喵叫，</span><span class="keep">就是工作完成囉！</span></h3>
+          <p>Claude 貓開始回覆你了</p>
+        </article>
+        <article class="card pose">
+          <picture>
+            <source srcset="art/calico-calling-still.svg" media="(prefers-reduced-motion: reduce)">
+            <img src="art/calico-calling.svg" alt="貓伸出前腳，旁邊的對話框裡有肉球" width="180" height="180" loading="lazy">
+          </picture>
+          <h3><span class="keep">需要你允許，</span><span class="keep">伸手點點你</span></h3>
+          <p>喵一聲，伸出前腳輕點桌面等你回應</p>
+        </article>
+        <article class="card pose">
+          <picture>
+            <source srcset="art/calico-pet-head-still.svg" media="(prefers-reduced-motion: reduce)">
+            <img src="art/calico-pet-head.svg" alt="貓被摸頭，頭上有愛心" width="180" height="180" loading="lazy">
+          </picture>
+          <h3><span class="keep">摸摸頭，</span><span class="keep">Claude 貓呼嚕道謝</span></h3>
+          <p>你的稱讚也會傳回 Claude 的對話</p>
+        </article>
+        <article class="card pose">
+          <picture>
+            <source srcset="art/calico-resting-still.svg" media="(prefers-reduced-motion: reduce)">
+            <img src="art/calico-resting.svg" alt="貓窩在坐墊上睡覺" width="180" height="180" loading="lazy">
+          </picture>
+          <h3><span class="keep">做完了，</span><span class="keep">窩進坐墊睡覺</span></h3>
+          <p>先坐著打瞌睡，再窩進坐墊</p>
+        </article>
+      </div>
+
+      <div class="card wide">
+        <img src="art/cans-usage.svg" alt="一疊罐罐，最上面那罐打開著" width="220" height="151" loading="lazy">
+        <div>
+          <h3><span class="keep">罐罐剩幾個，</span><span class="keep">用量就剩多少</span></h3>
+          <p>貓旁邊那疊罐罐，是 Claude 這週還剩的用量；最上面打開的那罐，是這 5 小時的。滑鼠移上去，會顯示還剩多少。（需要 Claude 訂閱方案）</p>
+        </div>
+      </div>
+
+      <ul class="chips" aria-label="還有這些">
+        <li>抓起來，Q 彈晃不停</li>
+        <li>你不開心時，牠也會垂頭難過</li>
+        <li>三種大小</li>
+      </ul>
+    </section>
+
+    <section class="soft-band" aria-labelledby="coats-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="coats-title"><span class="keep">換個花色，</span><span class="keep">頭像也跟著換</span></h2>
+          <p>三花、賓士、暹羅三種花色。坐墊有 8 種顏色，罐罐的顏色和口味也能換。在 Claude 桌面版裡，每段回覆旁邊的貓咪頭像也會換成同一隻。</p>
+        </div>
+        <div class="grid coats">
+          <figure class="coat">
+            <picture>
+              <source srcset="art/calico-waiting-still.svg" media="(prefers-reduced-motion: reduce)">
+              <img src="art/calico-waiting.svg" alt="三花貓" width="220" height="220" loading="lazy">
+            </picture>
+            <p>三花</p>
+          </figure>
+          <figure class="coat">
+            <picture>
+              <source srcset="art/tuxedo-waiting-still.svg" media="(prefers-reduced-motion: reduce)">
+              <img src="art/tuxedo-waiting.svg" alt="賓士貓" width="220" height="220" loading="lazy">
+            </picture>
+            <p>賓士</p>
+          </figure>
+          <figure class="coat">
+            <picture>
+              <source srcset="art/siamese-waiting-still.svg" media="(prefers-reduced-motion: reduce)">
+              <img src="art/siamese-waiting.svg" alt="暹羅貓" width="220" height="220" loading="lazy">
+            </picture>
+            <p>暹羅</p>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="donate" class="donate wrap" aria-labelledby="donate-title">
+      <div class="section-head">
+        <p class="pill">請貓貓吃罐罐</p>
+        <h2 id="donate-title">喜歡桌面貓的話，<br>請牠吃個罐罐吧</h2>
+        <p>桌面貓的功能全部免費。你的支持，是牠長出新花色、學會新動作的動力。</p>
+      </div>
+      <div class="grid can-choices">
+        <article class="card can-choice">
+          <img src="art/cans-1.svg" alt="一個打開的罐罐" width="59" height="120" loading="lazy">
+          <h3>一個罐罐</h3>
+          <p class="price"><small>NT$</small>50</p>
+          <a class="btn btn-can" href="#donate-note">請一個罐罐</a>
+        </article>
+        <article class="card can-choice">
+          <img src="art/cans-2.svg" alt="兩個罐罐" width="117" height="120" loading="lazy">
+          <h3>兩個罐罐</h3>
+          <p class="price"><small>NT$</small>100</p>
+          <a class="btn btn-can" href="#donate-note">請兩個罐罐</a>
+        </article>
+        <article class="card can-choice">
+          <img src="art/cans-many.svg" alt="疊成小山的罐罐" width="175" height="120" loading="lazy">
+          <h3>很多罐罐</h3>
+          <p class="price free">金額自己決定</p>
+          <a class="btn btn-can" href="#donate-note">請很多罐罐</a>
+        </article>
+      </div>
+      <p class="donate-note" id="donate-note">付款由綠界科技處理，可以刷卡或用 Apple Pay。按下按鈕後，在綠界的頁面填入金額就完成了。贊助不會解鎖任何功能。</p>
+    </section>
+
+    <section id="install" class="soft-band" aria-labelledby="install-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="install-title">安裝？交給 Claude 就好</h2>
+          <p>把這個網址貼給 Claude，請它幫你安裝桌面貓。</p>
+        </div>
+        <div class="card install-box">
+          <code id="repo-url">https://github.com/hannahindielab/desktop-cat</code>
+          <button class="btn btn-cta" type="button" data-copy="repo-url">複製網址</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="faq-title">
+      <div class="section-head">
+        <h2 id="faq-title">常見問題</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>要錢嗎？</summary>
+          <p>不用。桌面貓和 Claude 外掛全部免費，原始碼也公開在 GitHub 上。</p>
+        </details>
+        <details>
+          <summary>會把我的資料傳出去嗎？</summary>
+          <p>不會。全部在你的電腦上運作，不連網路。</p>
+        </details>
+        <details>
+          <summary>一定要用 Claude 嗎？</summary>
+          <p>要。貓是跟著 Claude Code 的對話換姿勢的，Claude 桌面版的 Code 分頁或終端機都可以。</p>
+        </details>
+        <details>
+          <summary>Mac 可以用嗎？</summary>
+          <p>目前只有 Windows 版。</p>
+        </details>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <p class="contact">有問題或想許願，寫信給我：<a href="mailto:hannah.indielab@gmail.com">hannah.indielab@gmail.com</a></p>
+        <p>原始碼在 <a href="https://github.com/hannahindielab/desktop-cat">GitHub</a> · © 2026 hannahindielab · 字體：jf open 粉圓（SIL Open Font License）</p>
+        <p>本專案為個人作品，與 Anthropic 無關，也未經其認可。Claude 是 Anthropic 的商標。</p>
+      </div>
+    </footer>
+
+    <script>
+      // The copy button puts the GitHub address on the clipboard and says so.
+      for (const button of document.querySelectorAll('[data-copy]')) {
+        const label = button.textContent
+        button.addEventListener('click', async () => {
+          const text = document.getElementById(button.dataset.copy).textContent
+          try {
+            await navigator.clipboard.writeText(text)
+            button.textContent = '已複製'
+          } catch {
+            button.textContent = '請手動複製'
+          }
+          setTimeout(() => {
+            button.textContent = label
+          }, 2000)
+        })
+      }
+    </script>
+  </body>
+</html>

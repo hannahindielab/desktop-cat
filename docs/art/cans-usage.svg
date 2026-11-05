@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-212 -261 424 291"><g transform="translate(40 -162)"><clipPath id="body-can16"><path d="M34 92V162A66 24 0 0 0 166 162V92Z"/></clipPath>
+    <path d="M34 92V162A66 24 0 0 0 166 162V92Z" fill="#C7CED6" stroke="#816C6A" stroke-width="5" stroke-linejoin="round"/>
+    <g clip-path="url(#body-can16)">
+      <path d="M34 108A66 24 0 0 0 166 108V146A66 24 0 0 1 34 146Z" style="fill:var(--label, #EE9A86)"/>
+      <rect x="46" y="80" width="12" height="110" fill="#fff" opacity=".35"/>
+      <path d="M34 154A66 24 0 0 0 166 154" fill="none" stroke="#A3ACB6" stroke-width="4"/>
+    </g><clipPath id="hole-can16"><ellipse cx="100" cy="93" rx="56" ry="18"/></clipPath>
+    <clipPath id="hole-up-can16"><path d="M44 93A56 18 0 0 0 156 93V-60H44Z"/></clipPath>
+    <ellipse cx="100" cy="92" rx="66" ry="24" fill="#F3F5F7" stroke="#816C6A" stroke-width="5"/>
+    <ellipse cx="100" cy="-15" rx="14" ry="8" fill="none" stroke="#816C6A" stroke-width="5"/>
+    <ellipse cx="100" cy="33" rx="56" ry="42" fill="#F3F5F7" stroke="#816C6A" stroke-width="5"/>
+    <ellipse cx="100" cy="35" rx="43" ry="31" fill="none" stroke="#A3ACB6" stroke-width="3"/>
+    <path d="M64 20c6-11 20-18 34-19" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="100" cy="93" rx="56" ry="18" fill="#4F5864"/>
+    <g clip-path="url(#hole-can16)">
+      <ellipse cx="100" cy="108" rx="54" ry="15" style="fill:var(--food, #C98A76)"/>
+      <g style="fill:var(--food-dark, #93584A)">
+        <ellipse cx="80" cy="102" rx="7" ry="3.5"/>
+        <ellipse cx="122" cy="100" rx="6" ry="3"/>
+      </g>
+      <path d="M94 97c5-2 11-2 15 0" fill="none" style="stroke:var(--food-light, #E4B3A2)" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <path d="M34 92A66 24 0 0 0 166 92L156 93A56 18 0 0 1 44 93Z" fill="#F3F5F7"/>
+    <path d="M44 93A56 18 0 0 0 156 93" fill="none" stroke="#A3ACB6" stroke-width="3"/>
+    <path d="M34 92A66 24 0 0 0 166 92" fill="none" stroke="#816C6A" stroke-width="5"/></g><g transform="translate(-100 -162)"><clipPath id="body-can17"><path d="M34 92V162A66 24 0 0 0 166 162V92Z"/></clipPath>
+    <path d="M34 92V162A66 24 0 0 0 166 162V92Z" fill="#C7CED6" stroke="#816C6A" stroke-width="5" stroke-linejoin="round"/>
+    <g clip-path="url(#body-can17)">
+      <path d="M34 108A66 24 0 0 0 166 108V146A66 24 0 0 1 34 146Z" style="fill:var(--label, #EE9A86)"/>
+      <rect x="46" y="80" width="12" height="110" fill="#fff" opacity=".35"/>
+      <path d="M34 154A66 24 0 0 0 166 154" fill="none" stroke="#A3ACB6" stroke-width="4"/>
+    </g><ellipse cx="100" cy="92" rx="66" ry="24" fill="#F3F5F7" stroke="#816C6A" stroke-width="5"/>
+    <ellipse cx="100" cy="93" rx="56" ry="18" fill="none" stroke="#A3ACB6" stroke-width="3"/>
+    <path d="M100 94V100" stroke="#A3ACB6" stroke-width="7" stroke-linecap="round"/>
+    <ellipse cx="100" cy="104" rx="13" ry="5.5" fill="none" stroke="#816C6A" stroke-width="4"/></g><g transform="translate(-240 -162)"><clipPath id="body-can18"><path d="M34 92V162A66 24 0 0 0 166 162V92Z"/></clipPath>
+    <path d="M34 92V162A66 24 0 0 0 166 162V92Z" fill="#C7CED6" stroke="#816C6A" stroke-width="5" stroke-linejoin="round"/>
+    <g clip-path="url(#body-can18)">
+      <path d="M34 108A66 24 0 0 0 166 108V146A66 24 0 0 1 34 146Z" style="fill:var(--label, #EE9A86)"/>
+      <rect x="46" y="80" width="12" height="110" fill="#fff" opacity=".35"/>
+      <path d="M34 154A66 24 0 0 0 166 154" fill="none" stroke="#A3ACB6" stroke-width="4"/>
+    </g><ellipse cx="100" cy="92" rx="66" ry="24" fill="#F3F5F7" stroke="#816C6A" stroke-width="5"/>
+    <ellipse cx="100" cy="93" rx="56" ry="18" fill="none" stroke="#A3ACB6" stroke-width="3"/>
+    <path d="M100 94V100" stroke="#A3ACB6" stroke-width="7" stroke-linecap="round"/>
+    <ellipse cx="100" cy="104" rx="13" ry="5.5" fill="none" stroke="#816C6A" stroke-width="4"/></g></svg>
