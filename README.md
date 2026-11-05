@@ -33,15 +33,7 @@ A cat that lives on your Windows desktop and follows what Claude Code is doing i
 
 ## 安裝
 
-**1. 安裝 Claude 外掛**：在 Claude Code 裡輸入
-
-```
-/plugin install desktop-cat --marketplace hannahindielab/desktop-cat
-```
-
-問要不要加入 marketplace 時輸入 `y`，再選安裝範圍。裝好後重新開啟對話。
-
-**2. 安裝桌面貓**：到 [Releases](../../releases) 下載 `DesktopCat-win32-x64.zip`，解壓縮到任何資料夾，執行裡面的 `DesktopCat.exe`。
+**安裝桌面貓**：到 [Releases](../../releases) 下載 `DesktopCat-win32-x64.zip`，解壓縮到任何資料夾，執行裡面的 `DesktopCat.exe`。
 
 > 這個程式沒有付費的軟體簽章，第一次打開時 Windows 可能顯示「Windows 已保護您的電腦」。按「其他資訊」→「仍要執行」即可。
 
@@ -76,8 +68,7 @@ The **Claude plugin** puts a cat's face beside each of Claude's replies, in the 
 
 ### Install
 
-1. In Claude Code, run `/plugin install desktop-cat --marketplace hannahindielab/desktop-cat`, answer `y` to add the marketplace, choose a scope, then reopen your conversations.
-2. Download `DesktopCat-win32-x64.zip` from [Releases](../../releases), unzip it anywhere and run `DesktopCat.exe`. The app is not code-signed, so Windows SmartScreen may warn on first launch: choose "More info" → "Run anyway".
+Download `DesktopCat-win32-x64.zip` from [Releases](../../releases), unzip it anywhere and run `DesktopCat.exe`. The app is not code-signed, so Windows SmartScreen may warn on first launch: choose "More info" → "Run anyway".
 
 Requires Windows 10 or 11 (64-bit) and a recent Claude Code.
 
