@@ -46,5 +46,5 @@ out by `desktop-app/tools/build-site-art.mjs`.
 | What | Where it is | Source |
 | --- | --- | --- |
 | The intro video | `docs/media/desktop-cat-intro.mp4` | Made for this project from the desktop cat's own drawings and sounds |
-| The video's music, "Bouncy Pocket" | In the intro video | Made with Suno for this project |
+| The video's music, "Bouncy Pocket" | In the intro video | Made with Suno for this project, on a paid plan that allows commercial use |
 | The font, jf open 粉圓 | Loaded from Google Fonts, where it is called Huninn | By justfont, under the SIL Open Font License 1.1 |
