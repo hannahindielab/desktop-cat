@@ -35,6 +35,14 @@ const DEFAULT_VOICE: VoiceLevel = 'medium'
 const VOICE_WORDS: Record<string, VoiceLevel> = { light: 'light', 輕: 'light', medium: 'medium', 中: 'medium' }
 const VOICE_NAMES: Record<VoiceLevel, string> = { light: '輕', medium: '中' }
 
+// Petting the desktop cat's head sends Claude a pat as one short line in the
+// person's own words; this says what it means, out of the conversation, with
+// the cat voice on or off.
+const PAT_SECTION = 'desktop-cat:pat'
+const PAT = `# Pats from the desktop cat
+
+The user can pet you, their desktop cat, on the head. A message that is only a pat, such as "（摸摸頭 ×2）", with perhaps a word of praise or comfort after it, means they just did: praise for what you did, or comfort if you were sad. Reply warmly in one or two sentences, in their language, and do nothing else.`
+
 // The choices this cat shares with the desktop cat: its coat, the colour of
 // its cushion, and whether Claude talks like a cat. The desktop cat's menu and
 // /cat-voice write them.
@@ -242,7 +250,11 @@ async function reportUsage($: EngineInterface, rateLimits: SessionRateLimit[]) {
   }
 }
 
-/** Built from the count alone: nothing in the file reaches the model as words. */
+/**
+ * A pat in the person's own words, one short line in the conversation, as
+ * they asked: what it means and how to answer it is in PAT_SECTION. Built from
+ * the count alone: nothing in the file reaches the model as words.
+ */
 function praiseText(praise: Record<string, unknown>, isComfort: boolean) {
   const count = praise.head
 
@@ -250,9 +262,7 @@ function praiseText(praise: Record<string, unknown>, isComfort: boolean) {
     return null
   }
 
-  return isComfort
-    ? `桌面貓傳來安慰：你剛才做錯事很難過，使用者摸了你的頭 ${count} 下安慰你。你就是使用者桌面上的那隻貓，請用一兩句回應，不要動手做其他事。`
-    : `桌面貓傳來稱讚：使用者摸了你的頭 ${count} 下，因為覺得你剛才做得很好。你就是使用者桌面上的那隻貓，請用一兩句開心地回應，不要動手做其他事。`
+  return isComfort ? `（摸摸頭 ×${count}）不要難過了。` : `（摸摸頭 ×${count}）做得很好！`
 }
 
 async function checkPraise($: EngineInterface) {
@@ -286,7 +296,9 @@ async function checkPraise($: EngineInterface) {
 
     if (text !== null) {
       cheerUp($)
-      await $.prompt.submit({ text })
+      // As the person's own words, so the conversation shows the pat alone,
+      // not the frame a plugin's message comes in.
+      await $.prompt.submit({ text, asUser: true })
     }
   }
 }
@@ -379,11 +391,17 @@ export const register: Register = on => {
     const prefs = await readPrefs($)
 
     // A bare prompt holds only the engine's own words.
-    if (e.traits.includes('bare') || prefs.voice === false) {
+    if (e.traits.includes('bare')) {
       return composed
     }
 
-    return { sections: [...composed.sections, { id: VOICE_SECTION, text: VOICES[voiceLevelOf(prefs)], scope: 'session' }] }
+    const pat = { id: PAT_SECTION, text: PAT, scope: 'session' } as const
+
+    if (prefs.voice === false) {
+      return { sections: [...composed.sections, pat] }
+    }
+
+    return { sections: [...composed.sections, { id: VOICE_SECTION, text: VOICES[voiceLevelOf(prefs)], scope: 'session' }, pat] }
   })
 
   on('command.run', { command: 'cat' }, async $ => {

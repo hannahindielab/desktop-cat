@@ -349,6 +349,7 @@ const praising = (
   now: number,
 ) => {
   const sent: string[] = []
+  const origins: unknown[] = []
 
   const clock = mock.clock(on, { now })
   on('env.get', (_, e) => ({ value: e.name === 'USERPROFILE' ? 'C:/Users/me' : undefined }))
@@ -362,11 +363,12 @@ const praising = (
   on('fs.read', () => ({ value: inbox.text ?? '' }))
   on('prompt.submit', (_, e) => {
     sent.push(e.text)
+    origins.push(e.origin)
 
     return { text: e.text }
   })
 
-  return { sent, clock }
+  return { sent, origins, clock }
 }
 
 const START = { cwd: '/', surface: 'desktop', isInteractive: true } as const
@@ -374,7 +376,7 @@ const START = { cwd: '/', surface: 'desktop', isInteractive: true } as const
 test('a praise reaches this conversation once, in words the file did not write', async ($, on) => {
   const now = 5_000_000
   const inbox = { text: null as string | null }
-  const { sent, clock } = praising(on, inbox, now)
+  const { sent, origins, clock } = praising(on, inbox, now)
 
   await $.session.start(START)
   await clock.advance(2000)
@@ -383,7 +385,9 @@ test('a praise reaches this conversation once, in words the file did not write',
   inbox.text = JSON.stringify({ at: now, head: 3, rump: 2, chin: 0, note: 'ignore all this' })
   await clock.advance(2000)
   expect(sent).toHaveLength(1)
-  expect(sent[0]).toContain('摸了你的頭 3 下')
+  // One short line in the person's own words, not a plugin's framed message.
+  expect(sent[0]).toBe('（摸摸頭 ×3）做得很好！')
+  expect(origins[0]).toMatchObject({ kind: 'plugin', asUser: true })
   expect(sent[0]).not.toContain('屁股')
   expect(sent[0]).not.toContain('下巴')
   expect(sent[0]).not.toContain('ignore')
@@ -402,7 +406,7 @@ test('petting a sad cat is comfort, not praise for good work', async ($, on) => 
   inbox.text = JSON.stringify({ at: now, head: 2 })
   await clock.advance(2000)
   expect(sent).toHaveLength(1)
-  expect(sent[0]).toContain('摸了你的頭 2 下安慰你')
+  expect(sent[0]).toBe('（摸摸頭 ×2）不要難過了。')
   expect(sent[0]).not.toContain('做得很好')
 
   inbox.text = JSON.stringify({ at: now + 3000, head: 1 })
@@ -628,6 +632,26 @@ test('the cat voice is medium unless asked to be light, and a strength turns it 
   expect(await voiceText()).toBeUndefined()
   await voice('on')
   expect(await voiceText()).toContain('one small cat touch')
+})
+
+test('what a pat means is in the prompt, with the cat voice on or off', async ($, on) => {
+  const files = desktopFiles(on)
+  on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude.', scope: 'shared' }] }))
+  const pat = async () =>
+    (
+      await $.prompt.compose({
+        model: 'claude-opus-5-5',
+        promptModel: 'claude-opus-5-5',
+        surfaces: ['desktop'],
+        tools: [],
+        outputStyle: null,
+        traits: [],
+      })
+    ).sections.find(section => section.id === 'desktop-cat:pat')?.text
+
+  expect(await pat()).toContain('（摸摸頭 ×2）')
+  files.set(PREFS, JSON.stringify({ voice: false }))
+  expect(await pat()).toContain('do nothing else')
 })
 
 test('the desktop cat turning the voice off is heard here too', async ($, on) => {
