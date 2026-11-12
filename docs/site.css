@@ -484,50 +484,88 @@ section {
   margin-bottom: 16px;
 }
 
-.can-choices {
-  grid-template-columns: repeat(3, 1fr);
-  max-width: 900px;
-  margin-inline: auto;
+/* One banner and one button: ECPay's page takes no amount from the link, so
+   the giver types it there. The big face from the ECPay strip, and around it
+   the cat talking to itself, faint on purpose: decoration, which the button
+   and the note below explain. */
+.donate {
+  --murmur: #bcb1ac;
 }
 
-.can-choice {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 28px 24px 24px;
+.can-banner {
+  position: relative;
+  max-width: 900px;
+  height: 250px;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(40% 90% at 8% 0%, var(--glow-pink), transparent 70%),
+    radial-gradient(40% 90% at 96% 100%, var(--glow-blue), transparent 70%),
+    radial-gradient(35% 80% at 55% 0%, var(--glow-lilac), transparent 70%),
+    var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* The face: its eyes' middle sits on the anchor (left, top), and it turns
+   10° about that point, as on the ECPay strip. */
+.can-banner .face {
+  position: absolute;
+  left: 50%;
+  top: 145px;
+  width: 860px;
+  max-width: none;
+  height: auto;
+  transform-origin: 353px 224px;
+  transform: translate(-353px, -224px) rotate(10deg);
+  filter: var(--cat-shadow-big);
+}
+
+.murmur {
+  position: absolute;
+  margin: 0;
+  color: var(--murmur);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.murmur.one {
+  left: calc(50% - 400px);
+  top: 40px;
+  font-size: 30px;
+  transform: rotate(-12deg);
+}
+
+.murmur.two {
+  left: calc(50% - 414px);
+  top: 124px;
+  font-size: 32px;
+  transform: rotate(-5deg);
+}
+
+.murmur.many {
+  left: calc(50% + 190px);
+  top: 118px;
+  font-size: 40px;
+  transform: rotate(9deg);
+}
+
+.donate-action {
+  margin: 28px 0 0;
   text-align: center;
 }
 
-/* One scale for every stack: the same height, each as wide as its cans. */
-.can-choice img {
-  height: 120px;
+.donate-action .btn-can {
   width: auto;
-  filter: var(--can-shadow);
-}
-
-.can-choice h3 {
-  margin-top: 16px;
-  font-size: 22px;
-}
-
-.price {
-  margin: 4px 0 20px;
-  color: var(--link);
-  font-size: 30px;
-  line-height: 1.3;
-}
-
-.price small {
+  min-width: 280px;
   font-size: 18px;
 }
 
-.price.free {
-  font-size: 22px;
-  line-height: 1.75;
-}
-
-.can-choice .btn {
-  margin-top: auto;
+@media (prefers-color-scheme: dark) {
+  .donate {
+    --murmur: #7c7486;
+  }
 }
 
 .donate-note {
@@ -645,9 +683,38 @@ footer .contact {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .can-choices {
-    grid-template-columns: 1fr;
-    max-width: 420px;
+  /* Narrower: the face smaller and lower, the murmurs above its head. */
+  .can-banner {
+    height: 280px;
+  }
+
+  .can-banner .face {
+    top: 205px;
+    width: 540px;
+    transform-origin: 222px 141px;
+    transform: translate(-222px, -141px) rotate(10deg);
+  }
+
+  .murmur.one {
+    left: calc(50% - 155px);
+    top: 12px;
+    font-size: 24px;
+    transform: rotate(-10deg);
+  }
+
+  .murmur.two {
+    left: calc(50% - 140px);
+    top: 56px;
+    font-size: 24px;
+    transform: rotate(-4deg);
+  }
+
+  .murmur.many {
+    left: auto;
+    right: calc(50% - 160px);
+    top: 30px;
+    font-size: 28px;
+    transform: rotate(8deg);
   }
 
   .install-box {
