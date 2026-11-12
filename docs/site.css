@@ -480,10 +480,6 @@ section {
 }
 
 /* Donations */
-.donate .section-head .pill {
-  margin-bottom: 16px;
-}
-
 /* One banner and one button: ECPay's page takes no amount from the link, so
    the giver types it there. The big face from the ECPay strip, and around it
    the cat talking to itself, faint on purpose: decoration, which the button
