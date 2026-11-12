@@ -527,15 +527,15 @@ section {
 }
 
 .murmur.one {
-  left: calc(50% - 400px);
+  left: calc(50% - 376px);
   top: 40px;
   font-size: 30px;
   transform: rotate(-12deg);
 }
 
 .murmur.two {
-  left: calc(50% - 414px);
-  top: 124px;
+  left: calc(50% - 390px);
+  top: 116px;
   font-size: 32px;
   transform: rotate(-5deg);
 }
