@@ -996,6 +996,8 @@ if (app.requestSingleInstanceLock()) {
   // Opened again while it runs, the program brings a hidden cat back: on a
   // desktop that shows no tray icon, that is the way back to it.
   app.on('second-instance', showCatAgain)
+  // On macOS, opening the app again from Finder or Launchpad.
+  app.on('activate', showCatAgain)
 } else {
   app.quit()
 }
