@@ -6,13 +6,17 @@
   "description": "A cat on the desktop that follows what Claude is doing in every conversation",
   "license": "MIT",
   "main": "src/main.js",
+  "desktopName": "desktop-cat.desktop",
   "scripts": {
     "start": "node tools/start.mjs",
     "poses": "node tools/build-poses.mjs",
     "cans": "node tools/build-cans.mjs",
     "site-art": "node tools/build-site-art.mjs",
     "test": "node --test test/mood.test.js test/praise.test.js test/prefs.test.js test/usage.test.js test/i18n.test.js test/pointer.test.js test/autostart-linux.test.js test/platform-linux.test.js test/workarea-linux.test.js && node tools/start.mjs test/self-test.js",
-    "package": "electron-packager . DesktopCat --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --ignore=\"^/test\" --ignore=\"^/dist\" --ignore=\"^/tools\""
+    "package": "electron-packager . DesktopCat --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --ignore=\"^/test\" --ignore=\"^/dist\" --ignore=\"^/tools\"",
+    "package:linux": "node tools/package.mjs",
+    "package:mac": "node tools/package.mjs",
+    "icons": "node tools/make-icons.mjs"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",

@@ -2,13 +2,13 @@
 
 ![The cat's poses](docs/poses.png)
 
-一隻住在 Windows 桌面上的貓，跟著 Claude Code 在每個對話裡做的事換姿勢：思考時頭上冒出雲朵、做事時敲鍵盤、工作收尾時嘰哩咕嚕喵喵說、做完就坐著打瞌睡，最後窩進坐墊睡覺。摸摸牠的頭，Claude 會收到你的稱讚。
+一隻住在 Windows（也可以是 macOS、Linux）桌面上的貓，跟著 Claude Code 在每個對話裡做的事換姿勢：思考時頭上冒出雲朵、做事時敲鍵盤、工作收尾時嘰哩咕嚕喵喵說、做完就坐著打瞌睡，最後窩進坐墊睡覺。摸摸牠的頭，Claude 會收到你的稱讚。
 
-A cat that lives on your Windows desktop and follows what Claude Code is doing in every conversation. [English below.](#english)
+A cat that lives on your Windows (or macOS, or Linux) desktop and follows what Claude Code is doing in every conversation. [English below.](#english)
 
 ## 有什麼
 
-**桌面貓（Windows 程式）**
+**桌面貓（桌面程式）**
 
 - 跟著 Claude 換姿勢：等待、思考（雲朵裡輪流出現小宇宙、問號、魚和符號）、做事、講話、打瞌睡、睡覺
 - Claude 需要你允許、或問你問題時，喵一聲，看著你、伸出一隻前腳輕點桌面等你回應，旁邊的對話框裡有個肉球跟著壓；一直沒人回應的話，每 3 分鐘再喵一聲。做完事時也喵一聲叫你
@@ -18,7 +18,7 @@ A cat that lives on your Windows desktop and follows what Claude Code is doing i
 - 旁邊有一疊罐罐，看 Claude 的用量還剩多少：這週剩多少就有幾罐（全滿 5 罐，每用掉 20% 少一罐），最上面打開的那罐是這 5 小時，食物跟著變少，吃光就是空罐。到了重設時間會自己補滿。滑鼠移到罐罐上會顯示「這一餐剩 66%・這週剩 94%」（只有 Claude 訂閱方案才有用量）
 - 外觀設定視窗（右鍵選單 →「外觀設定」）：花色（三花、賓士、暹羅，Claude 裡的貓也會跟著換）、貓的大小、坐墊顏色（抹茶綠、奶茶米、霧粉、霧藍、薰衣草、夜空藍、莓果紅、水泥灰）、顯示罐罐、罐罐顏色、罐罐口味（鮪魚、鮭魚、雞肉、牛肉），上面有小貓的即時預覽
 - 右鍵選單：顯示貓咪、外觀設定、音效與音量、Claude 貓語氣、永遠在最上層、開機自動啟動、語言、請貓貓吃罐罐
-- 語言：跟著 Windows 用中文或英文，也可以在右鍵選單的「語言」自己選，兩隻貓一起換
+- 語言：跟著電腦的語言用中文或英文，也可以在右鍵選單的「語言」自己選，兩隻貓一起換
 
 **Claude 外掛**
 
@@ -29,7 +29,7 @@ A cat that lives on your Windows desktop and follows what Claude Code is doing i
 
 ## 需要
 
-- Windows 10 或 11（64 位元）
+- Windows 10 或 11（64 位元）；或 macOS 13 以上；或 Linux 的 X11 桌面（例如 Ubuntu 24.04 的「GNOME on Xorg」）。macOS 和 Linux 目前要自己從原始碼建置，見下方
 - 新版的 Claude Code（桌面版 App 的 Code 分頁或終端機都可以）
 
 ## 安裝
@@ -51,6 +51,17 @@ npm test
 npm run package
 ```
 
+需要 Node.js 22.12 以上。`npm run package` 做的是 Windows 版；macOS 和 Linux 改用：
+
+- **macOS**：`npm run package:mac`，做出 `dist/DesktopCat-darwin-<架構>/DesktopCat.app`，只在這台電腦上簽章，可以直接打開或拖進「應用程式」。
+- **Linux**：`npm run package:linux`，再執行 `bash tools/install-linux.sh`，裝到 `~/.local/opt/desktop-cat` 並加進應用程式選單；`bash tools/uninstall-linux.sh` 可以移除。
+
+Linux 要注意：
+
+- 只支援 X11。Wayland 底下程式讀不到游標、也沒辦法一直留在最上層。
+- GNOME 預設不顯示系統列圖示，要裝 AppIndicator 擴充套件才看得到；不裝也沒關係，在貓身上按右鍵就有同樣的選單。把貓藏起來之後，再打開一次程式牠就會回來。
+- Ubuntu 24.04 起一般程式不能自己建立沙箱，所以 Linux 版用 `--no-sandbox` 啟動（`npm start`、選單項目和開機自動啟動都會帶上）。
+
 改了外掛裡的貓圖（`plugin/hooks/cats.ts`）之後，用 `npm run poses` 更新桌面貓的姿勢圖；改了罐罐的圖（`desktop-app/tools/can-art.mjs`）之後，用 `npm run cans` 更新罐罐。
 
 ## 素材與授權
@@ -63,11 +74,11 @@ npm run package
 
 ## English
 
-**Desktop Cat** is a cat that lives on your Windows desktop and changes pose to match what Claude Code is doing in each conversation: thinking under a little cloud, typing while it works, chattering meows as it replies, dozing when it's done, then curling up on its cushion to sleep. Pat its head and Claude gets your praise.
+**Desktop Cat** is a cat that lives on your Windows (or macOS, or Linux) desktop and changes pose to match what Claude Code is doing in each conversation: thinking under a little cloud, typing while it works, chattering meows as it replies, dozing when it's done, then curling up on its cushion to sleep. Pat its head and Claude gets your praise.
 
 ### Features
 
-**Desktop Cat (Windows app)**
+**Desktop Cat (desktop app)**
 
 - Changes pose with Claude: waiting, thinking (a tiny universe, question marks, fish and symbols take turns in its cloud), working, replying, dozing and sleeping
 - When Claude needs your permission or asks you something, it meows, looks at you and gently taps the desktop with one paw until you answer, while a paw print stamps along in the speech bubble beside it. If nobody answers, it meows again every 3 minutes. It also meows when the work is done
@@ -77,7 +88,7 @@ npm run package
 - A stack of cans beside it shows how much Claude usage you have left: 5 cans when your weekly allowance is full, one fewer for every 20% used. The open can on top shows the usage left in your current 5-hour session; its food level drops as you use Claude, and it's empty when that session's allowance is used up. They refill by themselves when the limits reset. Hover over the cans to see "This meal: 66% left · This week: 94% left" (requires a Claude subscription)
 - The Personalize window (right-click → Personalize): coat (calico, tuxedo or Siamese; the cat in Claude changes too), size, cushion color (matcha green, milk tea, dusty pink, dusty blue, lavender, midnight blue, berry red, concrete gray), whether to show the cans, can color and flavor (tuna, salmon, chicken, beef), with a live preview of the cat
 - Right-click menu: Show cat, Personalize, Sound, Cat-style replies, Always on top, Run at startup, Language, Buy the cat a can
-- Language: English or Traditional Chinese, matching your Windows language by default. You can also choose a language under Language in the right-click menu; both cats switch together
+- Language: English or Traditional Chinese, matching your computer's language by default. You can also choose a language under Language in the right-click menu; both cats switch together
 
 **Claude Code plugin**
 
@@ -88,7 +99,7 @@ npm run package
 
 ### Requirements
 
-- Windows 10 or 11 (64-bit)
+- Windows 10 or 11 (64-bit); or macOS 13 or later; or a Linux X11 desktop (such as "GNOME on Xorg" on Ubuntu 24.04). On macOS and Linux, build it from source for now, as below
 - A recent version of Claude Code (in the Code tab of the Claude desktop app or in a terminal)
 
 ### Install
@@ -109,6 +120,17 @@ npm install
 npm test
 npm run package
 ```
+
+You need Node.js 22.12 or later. `npm run package` builds for Windows; on macOS and Linux, use instead:
+
+- **macOS**: `npm run package:mac` builds `dist/DesktopCat-darwin-<arch>/DesktopCat.app`, signed for this computer only, ready to open or to drag into Applications.
+- **Linux**: `npm run package:linux`, then `bash tools/install-linux.sh` installs it in `~/.local/opt/desktop-cat` and adds it to the applications menu; `bash tools/uninstall-linux.sh` removes it.
+
+On Linux:
+
+- Only X11 is supported. Under Wayland a program can't read the pointer or stay on top.
+- GNOME shows no tray icons unless the AppIndicator extension is installed. Without it, right-click the cat for the same menu; if you hide the cat, open the program again to bring it back.
+- From Ubuntu 24.04 on, ordinary programs can't make their own sandbox, so the Linux build starts with `--no-sandbox` (`npm start`, the menu entry and Run at startup all add it).
 
 After changing the cat drawings in the plugin (`plugin/hooks/cats.ts`), run `npm run poses` to update the desktop cat's poses; after changing the cans (`desktop-app/tools/can-art.mjs`), run `npm run cans`.
 
