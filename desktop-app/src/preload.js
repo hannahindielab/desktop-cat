@@ -13,6 +13,10 @@ contextBridge.exposeInMainWorld('desktopCat', {
   // Changing size: fade out and say so, then fade in at the window's new side.
   onFadeOut: fade => ipcRenderer.on('cat:fade-out', () => fade()),
   onFadeIn: appear => ipcRenderer.on('cat:fade-in', (_, side) => appear(side)),
+  // Where the window hears no mouse moves (Linux, macOS), the main process
+  // says where the pointer is over it, and when it leaves.
+  onPointer: note => ipcRenderer.on('cat:pointer', (_, point) => note(point)),
+  onPointerOut: leave => ipcRenderer.on('cat:pointer-out', () => leave()),
   faded: () => ipcRenderer.send('cat:faded'),
   ready: () => ipcRenderer.send('cat:ready'),
   setInteractive: isOverCat => ipcRenderer.send('cat:set-interactive', isOverCat),

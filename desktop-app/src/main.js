@@ -39,6 +39,9 @@ const {
 const { cansOf, levelOf, readUsage, usageLeft } = require('./usage')
 // Every word the cat shows comes from the tables in src/locales.
 const { chosenLanguage, currentLanguage, languagesOffered, startText, t, textForWindows, useLanguage } = require('./i18n')
+// What differs between Windows, macOS and Linux.
+const platform = require('./platform')
+const { createPointerPoller } = require('./pointer')
 
 const SESSIONS_DIR =
   process.env.DESKTOP_CAT_SESSIONS_DIR ??
@@ -102,6 +105,13 @@ let lookWin = null
 let overlay = null
 let isOverlayReady = false
 let tray = null
+// Builds the tray's menu again where it is kept built up front (Linux), so its
+// ticks follow what changed; elsewhere the menu is built as it opens.
+let refreshTray = () => {}
+// The pointer, read every so often where the window hears no mouse moves.
+let pointerPoller = null
+// The voice switch as the attached menu last showed it.
+let shownVoice = null
 let settings = { ...DEFAULTS }
 let dragOffset = null
 let shownMood = null
@@ -133,6 +143,7 @@ function loadSettings() {
 function saveSettings() {
   fs.mkdirSync(path.dirname(settingsFile()), { recursive: true })
   fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2))
+  refreshTray()
 }
 
 const sizeInPixels = () =>
@@ -157,7 +168,7 @@ function catPlace() {
 
 /** Keeps the whole cat on a screen, whichever screens are plugged in now. */
 function onScreen(cat) {
-  const { x, y, width, height } = screen.getDisplayMatching(cat).workArea
+  const { x, y, width, height } = platform.workAreaOf(screen.getDisplayMatching(cat))
 
   return {
     ...cat,
@@ -170,7 +181,7 @@ const placeCat = cat => win.setBounds(windowAround(onScreen(cat)))
 
 function initialBounds() {
   const side = sizeInPixels()
-  const { x, y, width, height } = screen.getPrimaryDisplay().workArea
+  const { x, y, width, height } = platform.workAreaOf(screen.getPrimaryDisplay())
   const cat = {
     x: settings.x ?? x + width - side - 24,
     y: settings.y ?? y + height - side - 24,
@@ -233,8 +244,13 @@ function setAlwaysOnTop(isOn) {
 }
 
 function setOpenAtLogin(isOn) {
-  settings.openAtLogin = isOn
-  app.setLoginItemSettings({ openAtLogin: isOn })
+  // Should the system say no, the tick goes back to how it was.
+  try {
+    platform.setOpenAtLogin(app, isOn)
+    settings.openAtLogin = isOn
+  } catch {
+    settings.openAtLogin = !isOn
+  }
   saveSettings()
 }
 
@@ -265,6 +281,7 @@ function setPlace(id) {
   sendCushion(cushionNow(prefs))
   sendSound()
   showScreenEffects()
+  refreshTray()
 }
 
 // Effects that reach beyond the cat, as chosen on a try-out page: over every
@@ -277,7 +294,7 @@ const SCREEN_EFFECTS = new Set(require('./scenes').SCREEN_EFFECTS)
 const HAS_PLACES = PLACES.length > 1
 
 function screenScene() {
-  const area = screen.getDisplayMatching(win.getBounds()).workArea
+  const area = platform.workAreaOf(screen.getDisplayMatching(win.getBounds()))
   const cat = catPlace()
 
   return {
@@ -450,7 +467,10 @@ function buildMenu() {
       label: t('menu.voice'),
       type: 'checkbox',
       checked: isVoiceOn(prefs),
-      click: item => writePrefs(PREFS_FILE, { voice: item.checked }),
+      click: item => {
+        writePrefs(PREFS_FILE, { voice: item.checked })
+        refreshTray()
+      },
     },
     { type: 'separator' },
     {
@@ -516,6 +536,7 @@ async function setLanguage(language) {
   writePrefs(PREFS_FILE, { language })
   await useLanguage({ asked: language, preferred: app.getPreferredSystemLanguages() })
   tray?.setToolTip(t('app.name'))
+  refreshTray()
 
   for (const shown of [win, overlay]) {
     if (shown !== null && !shown.isDestroyed()) {
@@ -584,6 +605,8 @@ function changeLook(change) {
 
 /** The appearance window: one at a time, brought forward if it is open already. */
 function openLook() {
+  platform.beforeOpenLook(app)
+
   if (lookWin !== null && !lookWin.isDestroyed()) {
     lookWin.show()
     lookWin.focus()
@@ -633,7 +656,7 @@ function openLook() {
     scrolls. */
 function fitLook(height) {
   if (typeof height === 'number' && Number.isFinite(height)) {
-    const { height: screenHeight } = screen.getDisplayMatching(lookWin.getBounds()).workArea
+    const { height: screenHeight } = platform.workAreaOf(screen.getDisplayMatching(lookWin.getBounds()))
     const most = Math.min(900, screenHeight - 60)
     lookWin.setContentSize(LOOK_WIDTH, Math.min(Math.max(Math.ceil(height), 200), most))
   }
@@ -680,6 +703,17 @@ function refreshMood() {
     meowedAt = now
     win.webContents.send('cat:meow')
   }
+
+  // /cat-voice switches the voice from Claude's side: a menu attached up front
+  // shows it only once built again.
+  if (platform.menuIsAttached) {
+    const isVoiceShown = isVoiceOn(readPrefs(PREFS_FILE))
+
+    if (isVoiceShown !== shownVoice) {
+      shownVoice = isVoiceShown
+      refreshTray()
+    }
+  }
 }
 
 function watchSessions() {
@@ -718,6 +752,7 @@ function createWindow() {
     fullscreenable: false,
     skipTaskbar: true,
     show: false,
+    ...platform.windowOptions,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -729,11 +764,15 @@ function createWindow() {
   })
 
   win.setAlwaysOnTop(settings.alwaysOnTop, ON_TOP_LEVEL)
+  platform.afterCreate(win)
   // Clicks pass through to whatever is behind, until the pointer is on the cat.
-  win.setIgnoreMouseEvents(true, { forward: true })
+  win.setIgnoreMouseEvents(true, { forward: platform.forwardsPointer })
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', event => event.preventDefault())
-  win.once('ready-to-show', () => win.showInactive())
+  win.once('ready-to-show', () => {
+    win.showInactive()
+    watchPointer()
+  })
   // The coat, cushion and place come with the page, so the cat never shows in the wrong ones first.
   const prefs = readPrefs(PREFS_FILE)
   const cushion = cushionNow(prefs)
@@ -750,6 +789,34 @@ function createWindow() {
   // Hidden, the cat takes its effects with it.
   win.on('hide', showScreenEffects)
   win.on('show', showScreenEffects)
+  // The menu's 顯示貓咪 tick follows the window, however it was hidden or shown.
+  win.on('hide', () => refreshTray())
+  win.on('show', () => refreshTray())
+}
+
+// Where the window hears no mouse moves, the pointer is read every so often
+// and the page told, so the cat still takes the clicks once the pointer is on it.
+function watchPointer() {
+  if (platform.forwardsPointer) {
+    return
+  }
+
+  const poller = createPointerPoller({
+    getCursor: () => screen.getCursorScreenPoint(),
+    getBounds: () => win.getBounds(),
+    isVisible: () => !win.isDestroyed() && win.isVisible(),
+    send: (channel, point) => {
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+        win.webContents.send(channel, point)
+      }
+    },
+  })
+  poller.start()
+  pointerPoller = poller
+  win.on('closed', () => {
+    poller.stop()
+    pointerPoller = null
+  })
 }
 
 function fromCat(handler) {
@@ -830,7 +897,14 @@ function connectCat() {
   ipcMain.on(
     'cat:set-interactive',
     fromCat(isOverCat => {
-      win.setIgnoreMouseEvents(isOverCat !== true, { forward: true })
+      win.setIgnoreMouseEvents(isOverCat !== true, { forward: platform.forwardsPointer })
+
+      // The page may let go while the pointer still rests on the cat (as the
+      // menu closes with Esc): told again where it is, the cat takes the
+      // clicks without waiting for the mouse to move.
+      if (isOverCat !== true) {
+        pointerPoller?.resend()
+      }
     }),
   )
   ipcMain.on(
@@ -873,18 +947,15 @@ function connectCat() {
 }
 
 function createTray() {
-  tray = new Tray(
-    nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'tray.png')),
-  )
+  tray = new Tray(platform.trayImage(path.join(__dirname, '..', 'assets', 'tray.png')))
   tray.setToolTip(t('app.name'))
-  const openMenu = () => tray.popUpContextMenu(buildMenu())
-  tray.on('click', openMenu)
-  tray.on('right-click', openMenu)
+  refreshTray = platform.attachTray(tray, buildMenu)
 }
 
 function start() {
   // The language first, before the menu, the tray or any window shows a word.
   startText({ asked: readPrefs(PREFS_FILE).language, preferred: app.getPreferredSystemLanguages() })
+  platform.onReady(app)
   clearOldPraise(INBOX_DIR, Date.now())
   loadSettings()
   connectCat()
@@ -894,7 +965,11 @@ function start() {
 
   // The folder may have moved since this was turned on.
   if (settings.openAtLogin && app.isPackaged) {
-    app.setLoginItemSettings({ openAtLogin: true })
+    try {
+      platform.setOpenAtLogin(app, true)
+    } catch {
+      // Left as it was: the menu still shows it on, to turn off and on again.
+    }
   }
 
   const keepOnScreen = () => {
@@ -907,10 +982,22 @@ function start() {
   screen.on('display-metrics-changed', keepOnScreen)
 }
 
+/** Brings back a cat that was hidden. */
+function showCatAgain() {
+  if (win !== null && !win.isDestroyed() && !win.isVisible()) {
+    win.showInactive()
+  }
+}
+
 if (app.requestSingleInstanceLock()) {
   app.whenReady().then(start)
   // Only 離開 ends the cat; hiding its window does not.
   app.on('window-all-closed', () => {})
+  // Opened again while it runs, the program brings a hidden cat back: on a
+  // desktop that shows no tray icon, that is the way back to it.
+  app.on('second-instance', showCatAgain)
+  // On macOS, opening the app again from Finder or Launchpad.
+  app.on('activate', showCatAgain)
 } else {
   app.quit()
 }
