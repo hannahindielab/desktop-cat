@@ -41,6 +41,7 @@ const { cansOf, levelOf, readUsage, usageLeft } = require('./usage')
 const { chosenLanguage, currentLanguage, languagesOffered, startText, t, textForWindows, useLanguage } = require('./i18n')
 // What differs between Windows, macOS and Linux.
 const platform = require('./platform')
+const { createPointerPoller } = require('./pointer')
 
 const SESSIONS_DIR =
   process.env.DESKTOP_CAT_SESSIONS_DIR ??
@@ -107,6 +108,10 @@ let tray = null
 // Builds the tray's menu again where it is kept built up front (Linux), so its
 // ticks follow what changed; elsewhere the menu is built as it opens.
 let refreshTray = () => {}
+// The pointer, read every so often where the window hears no mouse moves.
+let pointerPoller = null
+// The voice switch as the attached menu last showed it.
+let shownVoice = null
 let settings = { ...DEFAULTS }
 let dragOffset = null
 let shownMood = null
@@ -698,6 +703,17 @@ function refreshMood() {
     meowedAt = now
     win.webContents.send('cat:meow')
   }
+
+  // /cat-voice switches the voice from Claude's side: a menu attached up front
+  // shows it only once built again.
+  if (platform.menuIsAttached) {
+    const isVoiceShown = isVoiceOn(readPrefs(PREFS_FILE))
+
+    if (isVoiceShown !== shownVoice) {
+      shownVoice = isVoiceShown
+      refreshTray()
+    }
+  }
 }
 
 function watchSessions() {
@@ -753,7 +769,10 @@ function createWindow() {
   win.setIgnoreMouseEvents(true, { forward: platform.forwardsPointer })
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', event => event.preventDefault())
-  win.once('ready-to-show', () => win.showInactive())
+  win.once('ready-to-show', () => {
+    win.showInactive()
+    watchPointer()
+  })
   // The coat, cushion and place come with the page, so the cat never shows in the wrong ones first.
   const prefs = readPrefs(PREFS_FILE)
   const cushion = cushionNow(prefs)
@@ -773,6 +792,31 @@ function createWindow() {
   // The menu's 顯示貓咪 tick follows the window, however it was hidden or shown.
   win.on('hide', () => refreshTray())
   win.on('show', () => refreshTray())
+}
+
+// Where the window hears no mouse moves, the pointer is read every so often
+// and the page told, so the cat still takes the clicks once the pointer is on it.
+function watchPointer() {
+  if (platform.forwardsPointer) {
+    return
+  }
+
+  const poller = createPointerPoller({
+    getCursor: () => screen.getCursorScreenPoint(),
+    getBounds: () => win.getBounds(),
+    isVisible: () => !win.isDestroyed() && win.isVisible(),
+    send: (channel, point) => {
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+        win.webContents.send(channel, point)
+      }
+    },
+  })
+  poller.start()
+  pointerPoller = poller
+  win.on('closed', () => {
+    poller.stop()
+    pointerPoller = null
+  })
 }
 
 function fromCat(handler) {
@@ -854,6 +898,13 @@ function connectCat() {
     'cat:set-interactive',
     fromCat(isOverCat => {
       win.setIgnoreMouseEvents(isOverCat !== true, { forward: platform.forwardsPointer })
+
+      // The page may let go while the pointer still rests on the cat (as the
+      // menu closes with Esc): told again where it is, the cat takes the
+      // clicks without waiting for the mouse to move.
+      if (isOverCat !== true) {
+        pointerPoller?.resend()
+      }
     }),
   )
   ipcMain.on(
@@ -931,10 +982,20 @@ function start() {
   screen.on('display-metrics-changed', keepOnScreen)
 }
 
+/** Brings back a cat that was hidden. */
+function showCatAgain() {
+  if (win !== null && !win.isDestroyed() && !win.isVisible()) {
+    win.showInactive()
+  }
+}
+
 if (app.requestSingleInstanceLock()) {
   app.whenReady().then(start)
   // Only 離開 ends the cat; hiding its window does not.
   app.on('window-all-closed', () => {})
+  // Opened again while it runs, the program brings a hidden cat back: on a
+  // desktop that shows no tray icon, that is the way back to it.
+  app.on('second-instance', showCatAgain)
 } else {
   app.quit()
 }

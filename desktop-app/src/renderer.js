@@ -475,14 +475,27 @@ function endPress(event) {
 window.addEventListener('pointerup', endPress)
 window.addEventListener('pointercancel', endPress)
 
-document.documentElement.addEventListener('mouseleave', () => {
+function leavePointer() {
   if (!isDragging && petting === null) {
     setOverCat(false)
     delete document.body.dataset.zone
   }
 
   hideHint()
+}
+
+document.documentElement.addEventListener('mouseleave', leavePointer)
+
+// Told where the pointer is while clicks go through (Linux, macOS). Held down
+// to carry or pet, the window hears the mouse itself, and these are left alone:
+// else the pointer slipping off the cat would let the clicks through again and
+// the release would never arrive.
+window.desktopCat.onPointer(({ x, y }) => {
+  if (!isDragging && petting === null) {
+    notePointer(x, y)
+  }
 })
+window.desktopCat.onPointerOut(leavePointer)
 
 // Once this many more frames are drawn. The screen shows a frame a little
 // after the page draws it, so waiting a few makes sure it has.

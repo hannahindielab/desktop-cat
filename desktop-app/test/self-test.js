@@ -5,6 +5,8 @@ const os = require('node:os')
 const path = require('node:path')
 const { app, BrowserWindow, Menu, screen, shell } = require('electron')
 
+const platform = require('../src/platform')
+
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-cat-test-'))
 
 // Pages the program would open in the browser, noted here instead of opened.
@@ -14,6 +16,8 @@ shell.openExternal = async page => {
 }
 const sessions = path.join(root, 'sessions')
 const shots = process.env.DESKTOP_CAT_TEST_SHOTS ?? root
+// A folder asked for that is not there yet is made.
+fs.mkdirSync(shots, { recursive: true })
 
 // The menu is read instead of shown: the last one built, its items clicked here.
 // Its submenus are built the same way, inside it, and are not kept on their own.
@@ -78,9 +82,28 @@ async function waitFor(check, what, ms = 5000) {
 
 async function run() {
   await app.whenReady()
+
+  // The pointer the program reads, to follow it and to carry the cat, is this
+  // pretend one, whatever the real mouse does. Swapped in before the program
+  // starts reading it, once its window is drawn.
+  let cursor = { x: -100000, y: -100000 }
+  screen.getCursorScreenPoint = () => ({ ...cursor })
+
   await waitFor(() => BrowserWindow.getAllWindows().length === 1, 'the window')
   const win = BrowserWindow.getAllWindows()[0]
   const page = win.webContents
+  // Whether clicks go through the window, as last asked.
+  let ignoresMouse = true
+  const realIgnore = win.setIgnoreMouseEvents.bind(win)
+  win.setIgnoreMouseEvents = (ignore, options) => {
+    ignoresMouse = ignore
+    realIgnore(ignore, options)
+  }
+  // Puts the pretend pointer at a point in the window.
+  const cursorAt = ({ x, y }) => {
+    const { x: left, y: top } = win.getBounds()
+    cursor = { x: left + x, y: top + y }
+  }
   const inPage = code => page.executeJavaScript(code)
   await waitFor(() => win.isVisible(), 'the window to show')
 
@@ -229,6 +252,7 @@ async function run() {
   const zone = ({ x, y }) => inPage(`zoneAt(${x}, ${y})`)
   const tap = ({ x, y }) => {
     win.setIgnoreMouseEvents(false)
+    cursorAt({ x, y })
     page.sendInputEvent({ type: 'mouseMove', x, y })
     page.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 })
     page.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 })
@@ -285,6 +309,7 @@ async function run() {
 
   const press = ({ x, y }) => {
     win.setIgnoreMouseEvents(false)
+    cursorAt({ x, y })
     page.sendInputEvent({ type: 'mouseMove', x, y })
     page.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 })
   }
@@ -343,8 +368,10 @@ async function run() {
   console.log('ok - turning the sound off silences the cat, and on brings it back')
 
   win.setIgnoreMouseEvents(false)
+  cursorAt({ x: 1, y: 1 })
   page.sendInputEvent({ type: 'mouseMove', x: 1, y: 1 })
   await waitFor(async () => (await inPage('document.body.dataset.over')) === 'false', 'hover off the cat')
+  cursorAt(SPOTS.chest)
   page.sendInputEvent({ type: 'mouseMove', x: SPOTS.chest.x, y: SPOTS.chest.y })
   await waitFor(async () => (await inPage('document.body.dataset.over')) === 'true', 'hover on the cat')
   const mewsBefore = (await sound()).mew
@@ -353,9 +380,41 @@ async function run() {
   assert.equal((await sound()).mew, mewsBefore + 1, 'a faint mew when picked up')
   page.sendInputEvent({ type: 'mouseUp', x: SPOTS.chest.x, y: SPOTS.chest.y, button: 'left', clickCount: 1 })
   await waitFor(async () => !(await inPage(`document.body.classList.contains('dragging')`)), 'the drag to end')
+  cursorAt({ x: 1, y: 1 })
   page.sendInputEvent({ type: 'mouseMove', x: 1, y: 1 })
   await waitFor(async () => (await inPage('document.body.dataset.over')) === 'false', 'hover to leave')
   console.log('ok - the cat is grabbed on its body and not on the gaps')
+
+  // Where the window hears no mouse moves while clicks go through it (Linux,
+  // macOS), the program reads the pointer and tells the page, and the window
+  // takes the clicks only once the pointer is on the cat.
+  if (!platform.forwardsPointer) {
+    const far = { x: -100000, y: -100000 }
+    const isOver = async () => (await inPage('document.body.dataset.over')) === 'true'
+    cursor = far
+    await waitFor(async () => !(await isOver()) && ignoresMouse, 'the pointer away: clicks pass through')
+    cursorAt(SPOTS.chest)
+    await waitFor(async () => (await isOver()) && !ignoresMouse, 'the pointer on the chest: the cat takes clicks')
+    cursorAt({ x: 1, y: 1 })
+    await waitFor(async () => !(await isOver()) && ignoresMouse, 'the pointer in a gap: clicks pass through')
+    cursorAt(SPOTS.chest)
+    await waitFor(async () => !ignoresMouse, 'back on the cat')
+    cursor = far
+    await waitFor(async () => ignoresMouse, 'out of the window: clicks pass through again')
+
+    // Petting while the pointer strays off the window: the window keeps taking
+    // the clicks until the button is let go.
+    cursorAt(SPOTS.head)
+    await waitFor(async () => !ignoresMouse, 'the pointer on the head')
+    press(SPOTS.head)
+    await waitFor(async () => (await pose()) === 'pet-head', 'petting')
+    cursor = far
+    await wait(300)
+    assert.equal(ignoresMouse, false, 'still taking clicks while petting')
+    page.sendInputEvent({ type: 'mouseUp', x: -40, y: -40, button: 'left', clickCount: 1 })
+    await waitFor(async () => ignoresMouse && (await inPage('petting === null')), 'let go outside: clicks pass again')
+    console.log('ok - the pointer is followed by asking where it is, and a pat holds while the pointer strays')
+  }
 
   const saved = JSON.parse(fs.readFileSync(path.join(root, 'user-data', 'settings.json'), 'utf8'))
   assert.deepEqual(
@@ -375,22 +434,34 @@ async function run() {
     return { transform, slant: slant ? Number(slant[1]) : 0, tall: tall ? Number(tall[1]) : 1 }
   }
   // The cat follows the pointer across the screen, so these say where on it.
-  // Measured once: carried, the window follows the real mouse, wherever that is.
+  // Measured once: carried, the window follows the pretend pointer from there.
   const pickedUpAt = win.getBounds()
   const onScreenAt = ({ x, y }) => ({ x, y, globalX: pickedUpAt.x + x, globalY: pickedUpAt.y + y })
   win.setIgnoreMouseEvents(false)
+  // Picked up, the program reads the pointer to know where on the cat it holds it.
+  cursorAt(SPOTS.chest)
   page.sendInputEvent({ type: 'mouseMove', ...onScreenAt(SPOTS.chest) })
   page.sendInputEvent({ type: 'mouseDown', ...onScreenAt(SPOTS.chest), button: 'left', clickCount: 1 })
   await waitFor(isDragged, 'picking the cat up')
   let most = { slant: 0, tall: 1 }
   for (let step = 1; step <= 12; step += 1) {
     const to = onScreenAt({ x: SPOTS.chest.x + step * 12, y: SPOTS.chest.y - step * 10 })
+    cursor = { x: to.globalX, y: to.globalY }
     page.sendInputEvent({ type: 'mouseMove', ...to, button: 'left', modifiers: ['leftButtonDown'] })
     await wait(16)
     const now = await shape()
     most = { slant: Math.max(most.slant, now.slant), tall: Math.min(most.tall, now.tall) }
   }
   fs.writeFileSync(path.join(shots, 'pet-carried.png'), (await page.capturePage()).toPNG())
+  // The window goes the way the pointer went, no further: one thrown off the
+  // screen stops being drawn on macOS, and would not wobble.
+  const carriedTo = { x: pickedUpAt.x + 12 * 12, y: pickedUpAt.y - 12 * 10 }
+  // A pixel either way: on a scaled screen the window's place is rounded.
+  await waitFor(
+    () => Math.abs(win.getBounds().x - carriedTo.x) <= 2 && Math.abs(win.getBounds().y - carriedTo.y) <= 2,
+    `carried, the window to follow the pointer to ${carriedTo.x}, ${carriedTo.y}`,
+    1000,
+  )
   release(SPOTS.chest)
   assert.ok(most.slant > 0.3, `carried right, its top slants left: ${most.slant}°`)
   assert.ok(most.tall < 0.995, `lifted, it squashes: ${most.tall}`)
@@ -641,12 +712,15 @@ async function run() {
   }
   // The left can, the one inside the sitting cat's box.
   const onCans = bottomRow[0]
+  cursorAt({ x: 1, y: 1 })
   page.sendInputEvent({ type: 'mouseMove', x: 1, y: 1 })
   await wait(100)
+  cursorAt(onCans)
   page.sendInputEvent({ type: 'mouseMove', ...onCans })
   await waitFor(() => inPage("hint.classList.contains('shown')"), 'the hint over the cans')
   assert.equal(await inPage('document.body.dataset.over'), 'true', 'the cans take the pointer')
   fs.writeFileSync(path.join(shots, 'cans-hint.png'), (await page.capturePage()).toPNG())
+  cursorAt({ x: 1, y: 1 })
   page.sendInputEvent({ type: 'mouseMove', x: 1, y: 1 })
   await waitFor(async () => !(await inPage("hint.classList.contains('shown')")), 'the hint to go')
   console.log('ok - the cans show what is left, and a hint under the pointer')
