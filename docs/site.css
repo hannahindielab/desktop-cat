@@ -78,6 +78,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The Chinese fonts draw "…" in the middle of the line, as Chinese sets it;
+   English sets it on the baseline. The English page takes just that one
+   character from the computer's own Latin font. */
+@font-face {
+  font-family: 'Latin Ellipsis';
+  src: local('Segoe UI'), local('SegoeUI'), local('Helvetica Neue'), local('HelveticaNeue'), local('Roboto'),
+    local('Arial'), local('ArialMT');
+  unicode-range: U+2026;
+}
+
+html:lang(en) body {
+  font-family: 'Latin Ellipsis', 'Huninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+}
+
 img {
   display: block;
   max-width: 100%;
@@ -271,6 +285,25 @@ section {
 .top nav .nav-can:hover {
   background: var(--brand-hover);
   color: var(--brand-ink);
+}
+
+/* The page in the other language, named in its own words, beside the same
+   globe as the desktop cat's Language menu. It stays on phones too, so
+   someone who can't read this page still finds theirs. */
+.top nav .nav-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.nav-lang .globe {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
 }
 
 /* The first screen, on the soft glow of the intro video's opening. */
@@ -705,6 +738,12 @@ footer .contact {
     transform: rotate(-4deg);
   }
 
+  /* "Two cans…" runs a little longer than the Chinese: a step to the left,
+     clear of the ear. The Chinese murmurs stay where they were set. */
+  html:lang(en) .murmur.two {
+    left: calc(50% - 152px);
+  }
+
   .murmur.many {
     left: auto;
     right: calc(50% - 160px);
@@ -755,6 +794,12 @@ footer .contact {
   .brand img {
     width: 30px;
     height: 30px;
+  }
+
+  /* No room for the name beside the other language and the can button:
+     the cat alone stands for it, and the name shows further down. */
+  .brand span {
+    display: none;
   }
 
   .top nav .nav-can {
