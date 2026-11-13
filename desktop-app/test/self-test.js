@@ -3,9 +3,15 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { app, BrowserWindow, Menu } = require('electron')
+const { app, BrowserWindow, Menu, screen, shell } = require('electron')
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-cat-test-'))
+
+// Pages the program would open in the browser, noted here instead of opened.
+const openedPages = []
+shell.openExternal = async page => {
+  openedPages.push(page)
+}
 const sessions = path.join(root, 'sessions')
 const shots = process.env.DESKTOP_CAT_TEST_SHOTS ?? root
 
@@ -30,9 +36,28 @@ Menu.buildFromTemplate = template => {
   }
 }
 
+// Every "always on top" the program asks for, with its level, to check it never
+// asks for one that Electron puts behind the taskbar on Windows: there the cat
+// drops out of the top layer whenever the taskbar happens not to be on top.
+const onTopAsked = []
+const realSetAlwaysOnTop = BrowserWindow.prototype.setAlwaysOnTop
+BrowserWindow.prototype.setAlwaysOnTop = function setAlwaysOnTop(flag, level, ...rest) {
+  onTopAsked.push({ flag, level })
+  return realSetAlwaysOnTop.call(this, flag, level, ...rest)
+}
+const BEHIND_TASKBAR = [undefined, 'floating', 'torn-off-menu', 'modal-panel', 'main-menu', 'status']
+
 process.env.DESKTOP_CAT_SESSIONS_DIR = sessions
 app.setPath('userData', path.join(root, 'user-data'))
+// A computer set to Traditional Chinese, wherever the test runs: the cat speaks Chinese.
+app.getPreferredSystemLanguages = () => ['zh-TW']
 require('../src/main.js')
+const { t } = require('../src/i18n')
+
+// The places, in a copy that has them. The public copy leaves them out for
+// now, and their checks with them (self-test-scenes.js).
+const HAS_PLACES = require('../src/scenes').PLACES.length > 0
+const scenes = HAS_PLACES ? require('./self-test-scenes') : null
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 const report = (id, mood, updatedAt = Date.now(), ended = false, calledAt = 0, sadAt = 0) =>
@@ -408,28 +433,75 @@ async function run() {
   let item = await openMenu()
   assert.deepEqual(
     lastMenu.map(entry => entry.label ?? '—'),
-    ['隱藏貓咪', '外觀設定…', '—', '音效與音量', 'Claude 貓語氣', '—', '永遠在最上層', '開機自動啟動', '—', '離開'],
-    'seven items in three groups',
+    [
+      '顯示貓咪',
+      '外觀設定',
+      // Where the cat is, in a copy that has places.
+      ...(HAS_PLACES ? [t('menu.place')] : []),
+      '—',
+      '音效與音量',
+      'Claude 貓語氣',
+      '—',
+      '永遠在最上層',
+      '開機自動啟動',
+      '語言',
+      '—',
+      '請貓貓吃罐罐',
+      '離開',
+    ],
+    'the items in four groups',
   )
+  item('請貓貓吃罐罐').click()
+  assert.equal(openedPages.at(-1), 'https://p.ecpay.com.tw/34D38BD', 'in Chinese, the Taiwanese tip page in the browser')
+  assert.equal(item('顯示貓咪').type, 'checkbox', 'showing the cat is ticked, not a word that changes')
+  assert.equal(item('顯示貓咪').checked, true, 'the cat is out')
   assert.deepEqual(
     item('音效與音量').submenu.map(entry => entry.label ?? '—'),
     ['開啟音效', '—', '小聲', '中等', '大聲'],
   )
-  console.log('ok - the menu holds the switches and the sound, and opens the appearance window')
+  if (HAS_PLACES) {
+    scenes.menu({ assert, item })
+  }
+  console.log('ok - the menu holds the switches, the sound and the place, and opens the appearance window')
 
-  item('外觀設定…').click()
+  // The language: the computer's at first, then each language in its own words.
+  assert.deepEqual(
+    item('語言').submenu.map(entry => entry.label),
+    ['使用系統設定', 'English', '繁體中文'],
+    "the computer's language, then each one named in its own words",
+  )
+  assert.equal(item('語言').submenu[0].checked, true, "the computer's language at first")
+  assert.ok(item('語言').icon, 'a globe beside it')
+  item('語言').submenu.find(entry => entry.label === 'English').click()
+  await waitFor(() => prefs().language === 'en', 'English kept, for the Claude cat too')
+  await waitFor(async () => (await inPage('document.documentElement.lang')) === 'en', 'the cat window in English')
+  item = await openMenu()
+  assert.ok(item('Exit'), 'the menu in English at once')
+  assert.equal(item('Language').submenu.find(entry => entry.label === 'English').checked, true, 'English ticked')
+  item('Buy the cat a can').click()
+  assert.equal(openedPages.at(-1), 'https://ko-fi.com/hannahindielab', 'in English, Ko-fi')
+  item('Language').submenu.find(entry => entry.label === 'Use system setting').click()
+  await waitFor(() => !('language' in prefs()), "the choice given back to the computer")
+  await waitFor(async () => (await inPage('document.documentElement.lang')) === 'zh-Hant', 'the cat window in Chinese again')
+  item = await openMenu()
+  assert.ok(item('離開'), 'this computer is set to Chinese: Chinese again')
+  console.log('ok - the language menu changes the words at once, and gives the choice back to the computer')
+
+  item('外觀設定').click()
   await waitFor(() => BrowserWindow.getAllWindows().length === 2, 'the appearance window')
   const look = BrowserWindow.getAllWindows().find(other => other !== win)
   const inLook = code => look.webContents.executeJavaScript(code)
-  await waitFor(async () => (await inLook('document.querySelectorAll(".segment.on").length')) === 2, 'the window to show the choices')
+  // The coat and size on the first page; the place and its volume on the second.
+  await waitFor(async () => (await inLook('document.querySelectorAll(".segment.on").length')) === 4, 'the window to show the choices')
   assert.equal(look.getTitle(), '外觀設定')
+  assert.equal(await inLook('document.querySelector("[data-page=place]").hidden'), true, 'it opens on the first page')
   assert.equal(await inLook('document.querySelector("[data-look=coat] .on").textContent'), '三花')
   assert.equal(await inLook('[...document.querySelectorAll("[data-look=coat] .segment")].map(choice => choice.textContent).join()'), '三花,賓士,暹羅')
   assert.equal(await inLook('document.querySelector("[data-look=size] .on").textContent'), '中')
   assert.equal(await inLook('document.querySelectorAll("[data-look=cushion] .swatch").length'), 8)
   assert.equal(await inLook('document.querySelectorAll("[data-look=canLabel] .swatch").length'), 9)
   assert.equal(await inLook('document.querySelectorAll("[data-look=canFood] .swatch").length'), 4)
-  item('外觀設定…').click()
+  item('外觀設定').click()
   await wait(200)
   assert.equal(BrowserWindow.getAllWindows().length, 2, 'asked again, the one window comes forward')
   await waitFor(
@@ -517,12 +589,20 @@ async function run() {
   await waitFor(async () => (await inLook('document.querySelector("[data-named=cushion]").textContent')) === '莓果紅', 'its name shown')
   assert.deepEqual(
     await inLook('[...document.querySelectorAll("[data-look] .on")].map(chosen => chosen.dataset.value)'),
-    ['calico', 'medium', 'berry', 'coral', 'tuna'],
+    ['calico', 'medium', 'berry', 'coral', 'tuna', 'none', 'medium'],
     'each row marks what is chosen',
   )
   assert.equal(await inLook('document.getElementById("stand").classList.contains("lying")'), true, 'the picture shows the cat on its cushion')
   fs.writeFileSync(path.join(shots, 'look-window.png'), (await look.webContents.capturePage()).toPNG())
   console.log('ok - the window changes the cushion colour, its name beside it')
+
+  if (HAS_PLACES) {
+    await scenes.places({ assert, fs, path, root, shots, win, look, screen, BrowserWindow, inPage, inLook, waitFor, wait, prefs, openMenu })
+  } else {
+    // No places in this copy: no tabs on the appearance window, only its one page.
+    assert.equal(await inLook('getComputedStyle(document.querySelector(".tabs")).display'), 'none', 'no tabs')
+    console.log('ok - with no places in this copy, the appearance window has one page and no tabs')
+  }
 
   // The cans: how much of Claude's use is left, from the file the Claude cat writes.
   const usageFile = path.join(root, 'usage.json')
@@ -533,6 +613,20 @@ async function run() {
   await waitFor(async () => (await stack()) === '3 low', 'three cans, the open one nearly eaten')
   assert.equal(await inPage('hint.textContent'), '這一餐剩 12%・這週剩 55%')
   assert.equal(await inPage('hint.querySelector(".low").textContent'), '這一餐剩 12%', 'nearly gone in red')
+  // Too narrow for one line, the meal goes over the week and the mark between
+  // them goes; wide enough again, they share the line.
+  assert.deepEqual(
+    await inPage(`(() => {
+      hint.style.maxWidth = '100px'
+      fitHint()
+      const narrow = [hint.classList.contains('stacked'), getComputedStyle(hint.querySelector('.between')).display]
+      hint.style.maxWidth = ''
+      fitHint()
+      return [...narrow, hint.classList.contains('stacked')]
+    })()`),
+    [true, 'none', false],
+    'the hint breaks only between the meal and the week',
+  )
 
   // Under the pointer for a moment, the cans show the hint; the cat's gaps do not.
   // Sitting, the cat's box overlaps the cans; only what it paints may cover them.
@@ -595,6 +689,15 @@ async function run() {
   )
   fs.writeFileSync(path.join(shots, 'pet-berry-cushion.png'), (await page.capturePage()).toPNG())
   console.log('ok - asleep, the cat lies on the cushion colour chosen')
+
+  // The cat and its effects were put on top, and never in the layer behind the taskbar.
+  assert.ok(onTopAsked.filter(asked => asked.flag === true).length >= (HAS_PLACES ? 2 : 1), 'the cat, and its effects where there are places, on top')
+  assert.deepEqual(
+    onTopAsked.filter(asked => asked.flag === true && BEHIND_TASKBAR.includes(asked.level)),
+    [],
+    "no level that Electron puts behind Windows' taskbar",
+  )
+  console.log('ok - the cat stays on top in a layer of its own, never behind the taskbar')
 
   console.log('ALL PASSED')
 }

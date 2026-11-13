@@ -7,12 +7,13 @@ const {
   nativeImage,
   nativeTheme,
   screen,
+  shell,
 } = require('electron')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 
-const { hasNewCall, isTimeToCallAgain, pickMood, readSessions } = require('./mood')
+const { hasNewCall, isTimeToCallAgain, pickMood, readSessions, wantsCallAgain } = require('./mood')
 const {
   clearOldPraise,
   createPraiseBox,
@@ -24,15 +25,20 @@ const {
   CAN_LABELS,
   COATS,
   CUSHIONS,
+  PLACES,
   canFoodOf,
   canLabelOf,
   coatOf,
+  cushionNow,
   cushionOf,
   isVoiceOn,
+  placeOf,
   readPrefs,
   writePrefs,
 } = require('./prefs')
 const { cansOf, levelOf, readUsage, usageLeft } = require('./usage')
+// Every word the cat shows comes from the tables in src/locales.
+const { chosenLanguage, currentLanguage, languagesOffered, startText, t, textForWindows, useLanguage } = require('./i18n')
 
 const SESSIONS_DIR =
   process.env.DESKTOP_CAT_SESSIONS_DIR ??
@@ -42,20 +48,18 @@ const PREFS_FILE = path.join(path.dirname(SESSIONS_DIR), 'prefs.json')
 // How much of Claude's use is left, written by the Claude cat for the cans.
 const USAGE_FILE = path.join(path.dirname(SESSIONS_DIR), 'usage.json')
 
+// Named in the tables as size.small and so on.
 const SIZES = [
-  { id: 'small', label: '小', pixels: 140 },
-  { id: 'medium', label: '中', pixels: 200 },
-  { id: 'large', label: '大', pixels: 280 },
+  { id: 'small', pixels: 140 },
+  { id: 'medium', pixels: 200 },
+  { id: 'large', pixels: 280 },
 ]
 // See-through room around the cat in its window, as a share of its size, so
 // it can bend like jelly while carried without being cut off.
 const ROOM = 0.15
 
-const VOLUMES = [
-  { id: 'low', label: '小聲' },
-  { id: 'medium', label: '中等' },
-  { id: 'high', label: '大聲' },
-]
+// Named in the tables as volume.low and so on.
+const VOLUMES = [{ id: 'low' }, { id: 'medium' }, { id: 'high' }]
 
 const DEFAULTS = {
   size: 'medium',
@@ -63,6 +67,10 @@ const DEFAULTS = {
   openAtLogin: false,
   soundOn: true,
   soundVolume: 'medium',
+  // How loud the place the cat is in sounds, apart from the cat itself.
+  placeVolume: 'medium',
+  // The place's effects: on the things beside the cat, and over the windows.
+  effectsOn: true,
   cansShown: true,
   canLabel: CAN_LABELS[0].id,
   canFood: CAN_FOODS[0].id,
@@ -74,9 +82,25 @@ const LOOK_WIDTH = 400
 const LOOK_FIT_WAIT_MS = 1000
 // Longer than the cat takes to fade out before it changes size.
 const FADE_WAIT_MS = 400
+// How "always on top" is asked for. Electron's own default, 'floating', puts a
+// window right behind the taskbar on Windows every time it is clicked; if the
+// taskbar is not on top just then (while something is full screen), the window
+// drops out of the top layer and stays down behind the others. From
+// 'pop-up-menu' up, Electron simply keeps the window on top.
+const ON_TOP_LEVEL = 'pop-up-menu'
+// Where the menu's tip item goes, as the two websites do: in Chinese the
+// Taiwanese payment page (cards from Taiwan), in any other language Ko-fi
+// (PayPal, from abroad).
+const TIP_PAGES = {
+  'zh-Hant': 'https://p.ecpay.com.tw/34D38BD',
+  other: 'https://ko-fi.com/hannahindielab',
+}
 
 let win = null
 let lookWin = null
+// The see-through window over the cat's screen that the larger effects play in.
+let overlay = null
+let isOverlayReady = false
 let tray = null
 let settings = { ...DEFAULTS }
 let dragOffset = null
@@ -196,6 +220,7 @@ function resizeNow() {
       height: side,
     })
     rememberPlace()
+    showScreenEffects()
   }
 
   win.webContents.send('cat:fade-in', windowSide())
@@ -203,7 +228,7 @@ function resizeNow() {
 
 function setAlwaysOnTop(isOn) {
   settings.alwaysOnTop = isOn
-  win.setAlwaysOnTop(isOn, 'floating')
+  win.setAlwaysOnTop(isOn, ON_TOP_LEVEL)
   saveSettings()
 }
 
@@ -213,10 +238,13 @@ function setOpenAtLogin(isOn) {
   saveSettings()
 }
 
+// The place's sound goes with the cat's: 開啟音效 off quiets both.
 function sendSound() {
   win.webContents.send('cat:sound', {
     enabled: settings.soundOn,
     volume: settings.soundVolume,
+    place: placeOf(readPrefs(PREFS_FILE)).id,
+    placeVolume: settings.placeVolume,
   })
 }
 
@@ -224,6 +252,106 @@ function setSound(change) {
   Object.assign(settings, change)
   sendSound()
   saveSettings()
+}
+
+const sendPlace = prefs => win.webContents.send('cat:place', placeOf(prefs).id)
+
+// The Claude cat goes to the same place when it next looks; the cat dresses
+// for it, takes the place's cushion, starts hearing it and shows its effects.
+function setPlace(id) {
+  writePrefs(PREFS_FILE, { place: id })
+  const prefs = readPrefs(PREFS_FILE)
+  sendPlace(prefs)
+  sendCushion(cushionNow(prefs))
+  sendSound()
+  showScreenEffects()
+}
+
+// Effects that reach beyond the cat, as chosen on a try-out page: over every
+// window on the cat's screen but under the cat and the taskbar, in a
+// see-through window that clicks go through and that never takes the focus.
+// It is there only while a place with such effects is chosen and effects are
+// on; which places have them is in scenes.js.
+const SCREEN_EFFECTS = new Set(require('./scenes').SCREEN_EFFECTS)
+// A copy without places (the public one, for now) shows none anywhere.
+const HAS_PLACES = PLACES.length > 1
+
+function screenScene() {
+  const area = screen.getDisplayMatching(win.getBounds()).workArea
+  const cat = catPlace()
+
+  return {
+    area,
+    scene: {
+      place: placeOf(readPrefs(PREFS_FILE)).id,
+      cat: { x: cat.x - area.x, y: cat.y - area.y, width: cat.width, height: cat.height },
+    },
+  }
+}
+
+function showScreenEffects() {
+  const isWanted =
+    win !== null && !win.isDestroyed() && win.isVisible() && settings.effectsOn && SCREEN_EFFECTS.has(placeOf(readPrefs(PREFS_FILE)).id)
+
+  if (!isWanted) {
+    if (overlay !== null && !overlay.isDestroyed()) {
+      overlay.destroy()
+    }
+    overlay = null
+    return
+  }
+
+  const { area, scene } = screenScene()
+
+  if (overlay === null) {
+    isOverlayReady = false
+    overlay = new BrowserWindow({
+      ...area,
+      transparent: true,
+      frame: false,
+      resizable: false,
+      movable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      focusable: false,
+      skipTaskbar: true,
+      hasShadow: false,
+      show: false,
+      webPreferences: { preload: path.join(__dirname, 'overlay-preload.js') },
+    })
+    const shown = overlay
+    shown.setIgnoreMouseEvents(true)
+    shown.setAlwaysOnTop(true, ON_TOP_LEVEL)
+    shown.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    shown.webContents.on('will-navigate', event => event.preventDefault())
+    shown.once('ready-to-show', () => {
+      if (!shown.isDestroyed()) {
+        shown.showInactive()
+        // The cat stays in front of its effects.
+        win.moveTop()
+      }
+    })
+    shown.on('closed', () => {
+      if (overlay === shown) {
+        overlay = null
+      }
+    })
+    shown.loadFile(path.join(__dirname, 'overlay.html'))
+  } else {
+    overlay.setBounds(area)
+  }
+
+  if (isOverlayReady) {
+    overlay.webContents.send('fx:scene', scene)
+  }
+}
+
+function setEffects(isOn) {
+  settings.effectsOn = isOn
+  saveSettings()
+  win.webContents.send('cat:effects', isOn)
+  showScreenEffects()
 }
 
 // The Claude cat puts on the same coat when it next looks.
@@ -252,36 +380,66 @@ function setCans(change) {
 const sendCushion = cushion =>
   win.webContents.send('cat:cushion', { colour: cushion.colour, seam: cushion.seam })
 
-// The Claude cat lies down on the same cushion when it next looks.
+// The Claude cat lies down on the same cushion when it next looks. In a
+// place, the cat keeps that place's cushion until it leaves.
 function setCushion(id) {
   writePrefs(PREFS_FILE, { cushion: id })
-  sendCushion(cushionOf({ cushion: id }))
+  sendCushion(cushionNow(readPrefs(PREFS_FILE)))
 }
 
 function buildMenu() {
   // Read afresh each time: /cat-voice may have switched the voice since.
   const prefs = readPrefs(PREFS_FILE)
 
-  // The switches and the sound; how the cat and its cans look has its own window.
+  // The switches and the sound; how the cat and its cans look has its own
+  // window, and where the cat is comes right under it.
   return Menu.buildFromTemplate([
+    // A tick shows whether the cat is out, and the words stay the same, as
+    // Windows asks of a menu item that is on or off.
     {
-      label: win.isVisible() ? '隱藏貓咪' : '顯示貓咪',
-      click: () => (win.isVisible() ? win.hide() : win.showInactive()),
+      label: t('menu.showCat'),
+      type: 'checkbox',
+      checked: win.isVisible(),
+      click: item => (item.checked ? win.showInactive() : win.hide()),
     },
-    { label: '外觀設定…', click: openLook },
+    { label: t('menu.look'), click: openLook },
+    // Laid out like the sound: where, then how loud. Only where there are places.
+    ...(HAS_PLACES
+      ? [
+          {
+            label: t('menu.place'),
+            submenu: [
+              ...PLACES.map(place => ({
+                label: t(`place.${place.id}`),
+                type: 'radio',
+                checked: placeOf(prefs).id === place.id,
+                click: () => changeLook({ place: place.id }),
+              })),
+              { type: 'separator' },
+              ...VOLUMES.map(volume => ({
+                label: t(`volume.${volume.id}`),
+                type: 'radio',
+                checked: settings.placeVolume === volume.id,
+                enabled: placeOf(prefs).id !== 'none',
+                click: () => changeLook({ placeVolume: volume.id }),
+              })),
+            ],
+          },
+        ]
+      : []),
     { type: 'separator' },
     {
-      label: '音效與音量',
+      label: t('menu.sound'),
       submenu: [
         {
-          label: '開啟音效',
+          label: t('menu.soundOn'),
           type: 'checkbox',
           checked: settings.soundOn,
           click: item => setSound({ soundOn: item.checked }),
         },
         { type: 'separator' },
         ...VOLUMES.map(volume => ({
-          label: volume.label,
+          label: t(`volume.${volume.id}`),
           type: 'radio',
           checked: settings.soundVolume === volume.id,
           click: () => setSound({ soundVolume: volume.id }),
@@ -289,28 +447,86 @@ function buildMenu() {
       ],
     },
     {
-      label: 'Claude 貓語氣',
+      label: t('menu.voice'),
       type: 'checkbox',
       checked: isVoiceOn(prefs),
       click: item => writePrefs(PREFS_FILE, { voice: item.checked }),
     },
     { type: 'separator' },
     {
-      label: '永遠在最上層',
+      label: t('menu.alwaysOnTop'),
       type: 'checkbox',
       checked: settings.alwaysOnTop,
       click: item => setAlwaysOnTop(item.checked),
     },
     {
-      label: '開機自動啟動',
+      label: t('menu.openAtLogin'),
       type: 'checkbox',
       checked: settings.openAtLogin,
       enabled: app.isPackaged,
       click: item => setOpenAtLogin(item.checked),
     },
+    // A globe beside it, and each language in its own words, so someone who
+    // can't read the menu yet still finds their way.
+    {
+      label: t('menu.language'),
+      icon: globeIcon(),
+      submenu: [
+        {
+          label: t('language.system'),
+          type: 'radio',
+          checked: chosenLanguage(prefs.language) === undefined,
+          click: () => setLanguage(undefined),
+        },
+        ...languagesOffered().map(language => ({
+          label: language.name,
+          type: 'radio',
+          checked: chosenLanguage(prefs.language) === language.code,
+          click: () => setLanguage(language.code),
+        })),
+      ],
+    },
     { type: 'separator' },
-    { label: '離開', click: () => app.quit() },
+    // For the people who keep the cat and like it: only here, never a pop-up.
+    { label: t('menu.tip'), click: openTipPage },
+    { label: t('menu.quit'), click: () => app.quit() },
   ])
+}
+
+/** The tip page in the browser, the one for the language the cat speaks. */
+function openTipPage() {
+  void shell.openExternal(TIP_PAGES[currentLanguage()] ?? TIP_PAGES.other)
+}
+
+/** The globe beside 語言, drawn for a light or a dark menu; none if the
+    pictures are missing. assets/globe-light@2x.png and the like are picked up
+    by themselves on screens set larger than 100%. */
+function globeIcon() {
+  const picture = nativeImage.createFromPath(
+    path.join(__dirname, '..', 'assets', `globe-${nativeTheme.shouldUseDarkColors ? 'dark' : 'light'}.png`),
+  )
+
+  return picture.isEmpty() ? undefined : picture
+}
+
+/** Speaks another language at once, or the computer's again (undefined): the
+    menu, the tray, every window, and the Claude cat, which reads the choice
+    from prefs.json too. */
+async function setLanguage(language) {
+  writePrefs(PREFS_FILE, { language })
+  await useLanguage({ asked: language, preferred: app.getPreferredSystemLanguages() })
+  tray?.setToolTip(t('app.name'))
+
+  for (const shown of [win, overlay]) {
+    if (shown !== null && !shown.isDestroyed()) {
+      shown.webContents.send('text:changed')
+    }
+  }
+
+  // The appearance window draws its choices from the words, so it starts over.
+  if (lookWin !== null && !lookWin.isDestroyed()) {
+    lookWin.webContents.reload()
+  }
 }
 
 /** How the cat and its cans look now, for the appearance window. */
@@ -324,17 +540,23 @@ function lookNow() {
     cansShown: settings.cansShown,
     canLabel: canLabelOf(settings.canLabel).id,
     canFood: canFoodOf(settings.canFood).id,
+    place: placeOf(prefs).id,
+    placeVolume: settings.placeVolume,
+    effectsOn: settings.effectsOn,
   }
 }
 
 // What the appearance window offers, and each change it may ask for, refused
-// unless it is one of these.
+// unless it is one of these. The right-click menu's 環境 asks the same way,
+// so the window, if open, shows what it chose.
 const LOOK_CHOICES = {
   coats: COATS,
-  sizes: SIZES.map(({ id, label }) => ({ id, label })),
+  sizes: SIZES.map(({ id }) => ({ id })),
   cushions: CUSHIONS,
   labels: CAN_LABELS,
   foods: CAN_FOODS,
+  places: PLACES,
+  placeVolumes: VOLUMES,
 }
 const LOOKS = {
   coat: id => COATS.some(coat => coat.id === id) && setCoat(id),
@@ -343,6 +565,9 @@ const LOOKS = {
   cansShown: isOn => typeof isOn === 'boolean' && setCans({ cansShown: isOn }),
   canLabel: id => CAN_LABELS.some(label => label.id === id) && setCans({ canLabel: id }),
   canFood: id => CAN_FOODS.some(food => food.id === id) && setCans({ canFood: id }),
+  place: id => PLACES.some(place => place.id === id) && setPlace(id),
+  placeVolume: id => VOLUMES.some(volume => volume.id === id) && setSound({ placeVolume: id }),
+  effectsOn: isOn => typeof isOn === 'boolean' && setEffects(isOn),
 }
 
 function changeLook(change) {
@@ -373,7 +598,7 @@ function openLook() {
     resizable: false,
     maximizable: false,
     fullscreenable: false,
-    title: '外觀設定',
+    title: t('look.title'),
     show: false,
     // The page's own paper, so the window never flashes white at night.
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#34302E' : '#FFFDF8',
@@ -403,10 +628,14 @@ function openLook() {
 }
 
 /** Fits the appearance window to its page, then shows it. A window that
-    cannot be resized opens a little taller than asked, so it is measured. */
+    cannot be resized opens a little taller than asked, so it is measured.
+    On a short screen it stops short of the screen's height, and its page
+    scrolls. */
 function fitLook(height) {
   if (typeof height === 'number' && Number.isFinite(height)) {
-    lookWin.setContentSize(LOOK_WIDTH, Math.min(Math.max(Math.ceil(height), 200), 900))
+    const { height: screenHeight } = screen.getDisplayMatching(lookWin.getBounds()).workArea
+    const most = Math.min(900, screenHeight - 60)
+    lookWin.setContentSize(LOOK_WIDTH, Math.min(Math.max(Math.ceil(height), 200), most))
   }
 
   lookWin.show()
@@ -447,7 +676,7 @@ function refreshMood() {
     win.webContents.send('cat:mood', mood)
   }
 
-  if (hasNewCall(sessions, seenCalls) || isTimeToCallAgain(mood, meowedAt, now)) {
+  if (hasNewCall(sessions, seenCalls) || (isTimeToCallAgain(mood, meowedAt, now) && wantsCallAgain(sessions, now))) {
     meowedAt = now
     win.webContents.send('cat:meow')
   }
@@ -499,23 +728,28 @@ function createWindow() {
     },
   })
 
-  win.setAlwaysOnTop(settings.alwaysOnTop, 'floating')
+  win.setAlwaysOnTop(settings.alwaysOnTop, ON_TOP_LEVEL)
   // Clicks pass through to whatever is behind, until the pointer is on the cat.
   win.setIgnoreMouseEvents(true, { forward: true })
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', event => event.preventDefault())
   win.once('ready-to-show', () => win.showInactive())
-  // The coat and cushion come with the page, so the cat never shows in the wrong ones first.
+  // The coat, cushion and place come with the page, so the cat never shows in the wrong ones first.
   const prefs = readPrefs(PREFS_FILE)
-  const cushion = cushionOf(prefs)
+  const cushion = cushionNow(prefs)
   win.loadFile(path.join(__dirname, 'index.html'), {
     query: {
       room: String(ROOM),
       coat: coatOf(prefs),
       cushion: cushion.colour,
       cushionSeam: cushion.seam,
+      place: placeOf(prefs).id,
+      effects: String(settings.effectsOn),
     },
   })
+  // Hidden, the cat takes its effects with it.
+  win.on('hide', showScreenEffects)
+  win.on('show', showScreenEffects)
 }
 
 function fromCat(handler) {
@@ -565,7 +799,10 @@ function connectCat() {
       sendSound()
       const prefs = readPrefs(PREFS_FILE)
       win.webContents.send('cat:coat', coatOf(prefs))
-      sendCushion(cushionOf(prefs))
+      sendPlace(prefs)
+      win.webContents.send('cat:effects', settings.effectsOn)
+      showScreenEffects()
+      sendCushion(cushionNow(prefs))
       sendCans()
       refreshMood()
     }),
@@ -574,8 +811,21 @@ function connectCat() {
     'look:get',
     fromLook(() => ({ now: lookNow(), choices: LOOK_CHOICES })),
   )
+  // Each of the cat's windows asks for its words the same way.
+  ipcMain.handle('text:get', event =>
+    [win, lookWin, overlay].some(shown => shown !== null && !shown.isDestroyed() && event.sender === shown.webContents)
+      ? textForWindows()
+      : undefined,
+  )
   ipcMain.on('look:set', fromLook(changeLook))
   ipcMain.on('look:fit', fromLook(fitLook))
+  // The effects window, once it can hear: what to show, and where the cat is.
+  ipcMain.on('fx:ready', event => {
+    if (overlay !== null && !overlay.isDestroyed() && event.sender === overlay.webContents) {
+      isOverlayReady = true
+      showScreenEffects()
+    }
+  })
   ipcMain.on('cat:faded', fromCat(resizeNow))
   ipcMain.on(
     'cat:set-interactive',
@@ -612,6 +862,8 @@ function connectCat() {
       dragOffset = null
       placeCat(catPlace())
       rememberPlace()
+      // Perhaps onto another screen, or to the other side of this one.
+      showScreenEffects()
     }),
   )
   ipcMain.on(
@@ -624,13 +876,15 @@ function createTray() {
   tray = new Tray(
     nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'tray.png')),
   )
-  tray.setToolTip('桌面貓')
+  tray.setToolTip(t('app.name'))
   const openMenu = () => tray.popUpContextMenu(buildMenu())
   tray.on('click', openMenu)
   tray.on('right-click', openMenu)
 }
 
 function start() {
+  // The language first, before the menu, the tray or any window shows a word.
+  startText({ asked: readPrefs(PREFS_FILE).language, preferred: app.getPreferredSystemLanguages() })
   clearOldPraise(INBOX_DIR, Date.now())
   loadSettings()
   connectCat()
@@ -646,6 +900,7 @@ function start() {
   const keepOnScreen = () => {
     if (!win.isDestroyed()) {
       placeCat(catPlace())
+      showScreenEffects()
     }
   }
   screen.on('display-removed', keepOnScreen)

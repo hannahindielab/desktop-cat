@@ -1,6 +1,8 @@
 import { CALICO, LYING, SIAMESE, SITTING, TUXEDO } from './coat-art'
 import type { CoatArt, Colours, FurLine, Part, Patches, Spot } from './coat-art'
 import { FISH } from './fish-art'
+import { PLACE_ART } from './place-art'
+import type { PlaceName } from './place-art'
 
 // The bubbles, clouds and marks round the cat keep one ink and one paper,
 // whichever coat the cat wears.
@@ -429,7 +431,14 @@ export const DEFAULT_CUSHION: CushionName = 'matcha'
 /** What the cushion is filled with: a colour, or anything else a CSS fill takes. */
 export type CushionColours = { colour: string; seam: string }
 
-const posesFor = (coat: CoatArt, cushion: CushionColours) => {
+// What the cat wears for where it is, on its head and beside it, sitting and
+// asleep, each in that drawing's own units. What is on its head moves with
+// it; beside the cat, a thing stands behind it sitting and in front of the
+// cushion asleep.
+export type Dress = { head: { sitting: string; lying: string }; beside: { sitting: string; lying: string } }
+const BARE: Dress = { head: { sitting: '', lying: '' }, beside: { sitting: '', lying: '' } }
+
+const posesFor = (coat: CoatArt, cushion: CushionColours, dress: Dress = BARE) => {
   const { colours } = coat
   const { eyes } = SITTING
   const tail = trimmed('sitting-tail', SITTING.outline.tail, fur(coat.patches.tail, SITTING.lines.tail, colours, coat, coat.points?.sitting.tail))
@@ -474,7 +483,9 @@ const posesFor = (coat: CoatArt, cushion: CushionColours) => {
   const mouth = `<path fill="${colours.ink}" fill-rule="evenodd" d="${SITTING.mouth}"/>`
   /** The body, the bending neck, and the head on top with whatever goes with it. */
   const sittingUp = (headMove: HeadMove, withHead: string, theBody = body) =>
-    `${theBody}${neck(headMove)}<g>${moved(headMove)}${head}${withHead}</g>`
+    `${theBody}${neck(headMove)}<g>${moved(headMove)}${head}${withHead}${dress.head.sitting}</g>`
+  /** A sitting pose, with what is beside the cat behind it. */
+  const sat = (content: string) => frame(`${dress.beside.sitting}${content}`)
   // The left front paw tapping: the body without it, the leg stretching from
   // where it leaves the body as the paw reaches, and squashing a little from
   // there as the paw lifts to tap; and the paw on its end.
@@ -537,13 +548,13 @@ const posesFor = (coat: CoatArt, cushion: CushionColours) => {
       <g>${tailMove}${dressedAsleep('tail')}</g>
       <g>${headMove}${dressedAsleep('head')}
         ${earsAndNose(coat, LYING.pink, asleep.colours.pink, LYING.outline.head, 'lying-ear-tips', coat.points?.lying.ears ?? [])}
-        ${whiskers(LYING.whiskers)}${face}
+        ${whiskers(LYING.whiskers)}${face}${dress.head.lying}
       </g>
-      ${around}
+      ${around}${dress.beside.lying}
     </svg>`
 
   /** Dozing off sitting up with its eyes shut, the moment the work is done. */
-  const DOZING = frame(`
+  const DOZING = sat(`
     ${swaying(6)}
     ${sittingUp(nodding(0, 10, 3.6), `${mouth}${arcEyes(26)}`)}
     ${floatingZs(
@@ -574,19 +585,19 @@ const posesFor = (coat: CoatArt, cushion: CushionColours) => {
   })
 
   /** Looking at the person and tapping the table, while a question or a permission waits for them. */
-  const CALLING = frame(`
+  const CALLING = sat(`
     ${swaying(4)}
     ${sittingUp(still, `${mouth}${openEyes()}`, `${bodyBesidePaw}${tappingPaw}`)}
     ${CALL_BUBBLE}`)
 
   /** Glancing from side to side, while a request is on its way. */
-  const WAITING = frame(`
+  const WAITING = sat(`
     ${swaying(4)}
     ${sittingUp(still, mouth)}
     <g>${move('0 0;14 0;14 0;-14 0;-14 0;0 0', 3.2)}${openEyes()}</g>`)
 
   /** Looking up at a thought cloud of little things it is turning over, while the model thinks. */
-  const THINKING = frame(`
+  const THINKING = sat(`
     ${swaying(3.4)}
     ${sittingUp(tilting(3, 3.4), `${mouth}${openEyes(8, -8)}`)}
     <g>${move('0 0;0 -8;0 0', 3.4)}
@@ -605,7 +616,7 @@ const posesFor = (coat: CoatArt, cushion: CushionColours) => {
     </g>`
 
   /** Tapping away at a keyboard, while a tool runs. */
-  const WORKING = frame(`
+  const WORKING = sat(`
     ${swaying(2.2)}
     ${sittingUp(nodding(0, 14, 0.88), `${mouth}${openEyes(0, 10)}`)}
     <rect x="396" y="1722" width="720" height="176" rx="34" fill="#8B8F97"/>
@@ -624,7 +635,7 @@ const posesFor = (coat: CoatArt, cushion: CushionColours) => {
     </ellipse>`
 
   /** Smiling and chatting away, while the reply comes in. */
-  const TALKING = frame(`
+  const TALKING = sat(`
     ${swaying(1.6)}
     ${sittingUp(nodding(0, 8, 0.9), `${openMouth}${mouth}${arcEyes(-26)}`)}
     <path d="M1290 70h390a50 50 0 0 1 50 50v150a50 50 0 0 1-50 50h-300l-110 70 26-70a50 50 0 0 1-56-50V120a50 50 0 0 1 50-50z" ${BUBBLE}/>
@@ -637,7 +648,7 @@ const posesFor = (coat: CoatArt, cushion: CushionColours) => {
       .join('')}`)
 
   /** Leaning into a hand on its head, eyes shut. */
-  const PET_HEAD = frame(`
+  const PET_HEAD = sat(`
     ${swaying(3)}
     ${sittingUp(nodding(14, 26, 0.7), `${mouth}${arcEyes(-26)}`)}
     ${hearts([
@@ -696,7 +707,7 @@ const posesFor = (coat: CoatArt, cushion: CushionColours) => {
     <path d="M808 649L838 624L868 649" fill="none" stroke="${colours.ink}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`
 
   /** Head hung and crying under a little raincloud, having got something wrong. */
-  const SAD = frame(`
+  const SAD = sat(`
     <g>${spin([8, 11, 8], TAIL_PIVOT, 5)}${tail}</g>
     ${sittingUp(
       nodding(34, 46, 3.2),
@@ -742,18 +753,25 @@ export const DEFAULT_COAT: CoatName = 'calico'
 
 const dressed = new Map<string, Poses>()
 
-/** Every pose in a coat, asleep on a cushion of these colours; drawn once each. */
-export function posesOn(coat: CoatName, cushion: CushionColours): Poses {
-  const key = `${coat} ${cushion.colour} ${cushion.seam}`
+/** What the cat wears and has beside it in a place. */
+const dressFor = (place: PlaceName): Dress => ({ head: PLACE_ART[place].head, beside: PLACE_ART[place].beside })
+
+/** Every pose in a coat, asleep on a cushion of these colours, dressed for a place or none; drawn once each. */
+export function posesOn(coat: CoatName, cushion: CushionColours, place?: PlaceName): Poses {
+  const key = `${coat} ${cushion.colour} ${cushion.seam} ${place ?? ''}`
   let poses = dressed.get(key)
 
   if (poses === undefined) {
-    poses = posesFor(ART[coat], cushion)
+    poses = posesFor(ART[coat], cushion, place === undefined ? BARE : dressFor(place))
     dressed.set(key, poses)
   }
 
   return poses
 }
+
+/** Every pose in a coat in a dress of any kind, such as marks a page fills in for each place itself. */
+export const posesWearing = (coat: CoatName, cushion: CushionColours, dress: Dress): Poses =>
+  posesFor(ART[coat], cushion, dress)
 
 /** The colours of a cushion by its name, or of the one it starts on for any other. */
 export const cushionColours = (name: unknown): CushionColours =>

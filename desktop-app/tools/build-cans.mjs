@@ -25,5 +25,10 @@ writeFileSync(
   join(app, 'src', 'cans.js'),
   `// The cans beside the cat, built from tools/can-art.mjs: each stack they can show.\nwindow.CANS = ${JSON.stringify(stacks)}\n`,
 )
-writeFileSync(join(app, 'src', 'can-choices.json'), `${JSON.stringify({ labels: LABEL_COLOURS, foods: FOODS }, null, 2)}\n`)
+// The app knows each choice by its id; its names are in src/locales (colour.coral, food.tuna).
+const withoutNames = choices => choices.map(({ label, ...choice }) => choice)
+writeFileSync(
+  join(app, 'src', 'can-choices.json'),
+  `${JSON.stringify({ labels: withoutNames(LABEL_COLOURS), foods: withoutNames(FOODS) }, null, 2)}\n`,
+)
 console.log(`src/cans.js rebuilt: ${Object.keys(stacks).length} stacks; src/can-choices.json: ${LABEL_COLOURS.length} labels, ${FOODS.length} foods`)

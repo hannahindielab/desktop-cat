@@ -1,11 +1,14 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionRateLimit } from 'claude-code'
 
-import type { Coat, Cushion, Mood } from '../types'
+import type { Coat, Cushion, Mood, Place } from '../types'
 import { COATS, CUSHIONS, DEFAULT_COAT, DEFAULT_CUSHION, WORKING_PAW, cushionColours, posesOn } from './cats'
+import { PLACE_ART } from './place-art'
+import type { PlaceName } from './place-art'
+import { SOURCE, TABLES, pickLanguage, systemLanguages, textIn } from './text'
+import type { Say } from './text'
 
 const PANE = 'cat'
-const TITLE = '貓咪'
 
 // Claude talks with a touch of cat, until the person turns it off: by default
 // a little more, with what it does told the way a cat would, or on request
@@ -31,9 +34,9 @@ ${KEEP_TO_WORK}`,
 } as const
 type VoiceLevel = keyof typeof VOICES
 const DEFAULT_VOICE: VoiceLevel = 'medium'
-// What /cat-voice takes for each strength, in either language.
+// What /cat-voice takes for each strength, in either language. Its names, as
+// the replies say them, are in the tables (voice.light, voice.medium).
 const VOICE_WORDS: Record<string, VoiceLevel> = { light: 'light', 輕: 'light', medium: 'medium', 中: 'medium' }
-const VOICE_NAMES: Record<VoiceLevel, string> = { light: '輕', medium: '中' }
 
 // Petting the desktop cat's head sends Claude a pat as one short line in the
 // person's own words; this says what it means, out of the conversation, with
@@ -41,12 +44,19 @@ const VOICE_NAMES: Record<VoiceLevel, string> = { light: '輕', medium: '中' }
 const PAT_SECTION = 'desktop-cat:pat'
 const PAT = `# Pats from the desktop cat
 
-The user can pet you, their desktop cat, on the head. A message that is only a pat, such as "（摸摸頭 ×2）", with perhaps a word of praise or comfort after it, means they just did: praise for what you did, or comfort if you were sad. Reply warmly in one or two sentences, in their language, and do nothing else.`
+The user can pet you, their desktop cat, on the head. A message that is only a pat, such as "（摸摸頭 ×2）" or "(head pat ×2)", with perhaps a word of praise or comfort after it, means they just did: praise for what you did, or comfort if you were sad. Reply warmly in one or two sentences, in their language, and do nothing else.`
 
 // The choices this cat shares with the desktop cat: its coat, the colour of
-// its cushion, and whether Claude talks like a cat. The desktop cat's menu and
-// /cat-voice write them.
-type Prefs = { coat?: unknown; cushion?: unknown; voice?: unknown; voiceLevel?: unknown }
+// its cushion, where it is, whether Claude talks like a cat, and the
+// language both cats speak. The desktop cat's menu and /cat-voice write them.
+type Prefs = {
+  coat?: unknown
+  cushion?: unknown
+  place?: unknown
+  voice?: unknown
+  voiceLevel?: unknown
+  language?: unknown
+}
 
 async function prefsFile($: EngineInterface) {
   const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))
@@ -87,6 +97,10 @@ const coatOf = (prefs: Prefs): Coat =>
   (Object.keys(COATS) as Coat[]).find(name => name === prefs.coat) ?? DEFAULT_COAT
 const cushionOf = (prefs: Prefs): Cushion =>
   CUSHIONS.find(cushion => cushion.id === prefs.cushion)?.id ?? DEFAULT_CUSHION
+const NO_PLACE = 'none'
+const placeOf = (prefs: Prefs): Place =>
+  (Object.keys(PLACE_ART) as PlaceName[]).find(name => name === prefs.place) ?? NO_PLACE
+const languageOf = (prefs: Prefs) => pickLanguage(prefs.language, systemLanguages(), Object.keys(TABLES))
 
 const PRAISE_CHECK_MS = 2000
 // A praise older than this belongs to before this conversation was reopened.
@@ -108,29 +122,45 @@ const lastPraise = atom({ plugin: 'desktop-cat', key: 'lastPraise' } as const, 0
 const sad = atom({ plugin: 'desktop-cat', key: 'sad' } as const, false)
 const coat = atom({ plugin: 'desktop-cat', key: 'coat' } as const, DEFAULT_COAT as Coat)
 const cushion = atom({ plugin: 'desktop-cat', key: 'cushion' } as const, DEFAULT_CUSHION as Cushion)
+const place = atom({ plugin: 'desktop-cat', key: 'place' } as const, NO_PLACE as Place)
+const language = atom({ plugin: 'desktop-cat', key: 'language' } as const, SOURCE as string)
+/** The words in the language the cats speak, as last read from the desktop cat's choices. */
+const sayNow = async ($: EngineInterface) => textIn(await read($, language))
 
+// Each pose's name under the cat is in the tables (pose.resting and so on).
 const POSES = {
-  resting: { pose: 'RESTING', alt: 'A cat asleep on its cushion', label: '休息中' },
-  waiting: { pose: 'WAITING', alt: 'A cat with its ears up, waiting', label: '等待中' },
-  calling: { pose: 'CALLING', alt: 'A cat looking at you and tapping the table', label: '等你回應' },
-  thinking: { pose: 'THINKING', alt: 'A cat looking up, lost in thought', label: '思考中' },
-  working: { pose: 'WORKING', alt: 'A cat tapping at a keyboard', label: '做事中' },
-  talking: { pose: 'TALKING', alt: 'A cat smiling and talking', label: '說話中' },
-  sad: { pose: 'SAD', alt: 'A cat with its head hung low, crying', label: '難過中' },
+  resting: { pose: 'RESTING', alt: 'A cat asleep on its cushion' },
+  waiting: { pose: 'WAITING', alt: 'A cat with its ears up, waiting' },
+  calling: { pose: 'CALLING', alt: 'A cat looking at you and tapping the table' },
+  thinking: { pose: 'THINKING', alt: 'A cat looking up, lost in thought' },
+  working: { pose: 'WORKING', alt: 'A cat tapping at a keyboard' },
+  talking: { pose: 'TALKING', alt: 'A cat smiling and talking' },
+  sad: { pose: 'SAD', alt: 'A cat with its head hung low, crying' },
 } as const
 
-/** A pose as the cat in this coat strikes it, its cushion in this colour. */
-function look(wearing: Coat, lyingOn: Cushion, name: keyof typeof POSES) {
-  const { pose, alt, label } = POSES[name]
+/** Every pose in this coat, dressed for where the cat is: in a place, on the place's own cushion. */
+const posesNow = (wearing: Coat, lyingOn: Cushion, at: Place) =>
+  at === NO_PLACE ? posesOn(wearing, cushionColours(lyingOn)) : posesOn(wearing, PLACE_ART[at].cushion, at)
 
-  return { source: posesOn(wearing, cushionColours(lyingOn))[pose], alt, label }
+/** A pose as the cat in this coat strikes it, on its cushion, dressed for where it is, and named. */
+function look(wearing: Coat, lyingOn: Cushion, at: Place, name: keyof typeof POSES, say: Say) {
+  const { pose, alt } = POSES[name]
+
+  return { source: posesNow(wearing, lyingOn, at)[pose], alt, label: say(`pose.${name}`) }
 }
 
-/** Puts on the coat the desktop cat wears, and takes its cushion, when they change. */
+/** Puts on the coat the desktop cat wears, takes its cushion, goes where it is
+    and speaks its language, when they change. */
 async function followDesktopCat($: EngineInterface) {
   const prefs = await readPrefs($)
   const wantedCoat = coatOf(prefs)
   const wantedCushion = cushionOf(prefs)
+  const wantedPlace = placeOf(prefs)
+  const wantedLanguage = languageOf(prefs)
+
+  if ((await read($, language)) !== wantedLanguage) {
+    await update($, language, () => wantedLanguage)
+  }
 
   if ((await read($, coat)) !== wantedCoat) {
     await update($, coat, () => wantedCoat)
@@ -139,6 +169,10 @@ async function followDesktopCat($: EngineInterface) {
   if ((await read($, cushion)) !== wantedCushion) {
     await update($, cushion, () => wantedCushion)
   }
+
+  if ((await read($, place)) !== wantedPlace) {
+    await update($, place, () => wantedPlace)
+  }
 }
 
 let shown: Mood | undefined
@@ -146,6 +180,12 @@ let reporting: Promise<void> = Promise.resolve()
 let calledAt = 0
 let sadAt = 0
 let movedOn = false
+// While the cat waits on the person, whether the desktop cat meows again every
+// few minutes: yes for a card that holds the work up, no for a question left
+// in the next-step box, which is seldom urgent and comes at many a turn's end.
+let callsAgain = true
+// This turn left a question in the next-step box.
+let asksAtEnd = false
 
 /** One file per conversation, for the desktop cat to read. */
 async function report($: EngineInterface, next: Mood, ended: boolean) {
@@ -159,6 +199,7 @@ async function report($: EngineInterface, next: Mood, ended: boolean) {
         updatedAt: await $.clock.now(),
         ended,
         calledAt,
+        callsAgain,
         sadAt,
         movedOn,
       }),
@@ -210,6 +251,26 @@ const ONE_CALL_MS = 2000
 
 /** Waiting on the person: the cat looks at them and taps the table, and meows. */
 function askThePerson($: EngineInterface) {
+  callsAgain = true
+  become($, 'calling')
+  callOut($)
+}
+
+// The Claude desktop app's next-step box. A turn can end on a question there,
+// in its `ask`: no card, but the person's answer is awaited all the same.
+const NEXT_STEP_BOX = 'mcp__ccd_turn__wrap_up'
+
+/** Did this call leave a question in the next-step box? */
+const asksInTheBox = (e: object) => {
+  const ask = 'ask' in e ? e.ask : undefined
+
+  return typeof ask === 'string' && ask.trim() !== ''
+}
+
+/** A turn that ends on a question in the next-step box: the cat waits on the
+    person as for a card, with one meow, and the desktop cat does not meow again. */
+function askInTheBox($: EngineInterface) {
+  callsAgain = false
   become($, 'calling')
   callOut($)
 }
@@ -255,14 +316,14 @@ async function reportUsage($: EngineInterface, rateLimits: SessionRateLimit[]) {
  * they asked: what it means and how to answer it is in PAT_SECTION. Built from
  * the count alone: nothing in the file reaches the model as words.
  */
-function praiseText(praise: Record<string, unknown>, isComfort: boolean) {
+function praiseText(praise: Record<string, unknown>, isComfort: boolean, say: Say) {
   const count = praise.head
 
   if (!(Number.isInteger(count) && Number(count) > 0 && Number(count) < 1000)) {
     return null
   }
 
-  return isComfort ? `（摸摸頭 ×${count}）不要難過了。` : `（摸摸頭 ×${count}）做得很好！`
+  return say(isComfort ? 'pat.comfort' : 'pat.praise', { count: Number(count) })
 }
 
 async function checkPraise($: EngineInterface) {
@@ -292,7 +353,7 @@ async function checkPraise($: EngineInterface) {
   const now = await $.clock.now()
 
   if (isNew && now - at < PRAISE_FRESH_MS) {
-    const text = praiseText(praise, sadAt !== 0 && now - sadAt < SAD_AT_MOST_MS)
+    const text = praiseText(praise, sadAt !== 0 && now - sadAt < SAD_AT_MOST_MS, await sayNow($))
 
     if (text !== null) {
       cheerUp($)
@@ -315,19 +376,16 @@ function become($: EngineInterface, next: Mood) {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({
-      name: 'cat',
-      description: 'Open the pane with the cat beside the chat',
-    })
-    await $.command.register({
-      name: 'cat-voice',
-      description: 'Turn the cat way of talking on or off, or set how much: on, off, light (輕), medium (中), or nothing to switch',
-    })
+    // The shared choices first, the language among them, so the commands
+    // are described in it.
+    await followDesktopCat($).catch(() => {})
+    const say = await sayNow($)
+    await $.command.register({ name: 'cat', description: say('command.cat') })
+    await $.command.register({ name: 'cat-voice', description: say('command.catVoice') })
     $.clock.every(PRAISE_CHECK_MS, () => {
       void checkPraise($).catch(() => {})
       void followDesktopCat($).catch(() => {})
     })
-    await followDesktopCat($).catch(() => {})
     await $.tool.register({ name: 'feel_sad', description: SAD_DESCRIPTION, isDeferred: false })
 
     return next(e)
@@ -371,18 +429,19 @@ export const register: Register = on => {
   on('command.run', { command: 'cat-voice' }, async ($, e) => {
     const asked = e.args.trim().toLowerCase()
     const level = VOICE_WORDS[asked]
+    const say = await sayNow($)
 
     // A strength turns the voice on at that strength.
     if (level !== undefined) {
       await writePrefs($, { voice: true, voiceLevel: level })
 
-      return { text: `貓語氣：${VOICE_NAMES[level]}，喵。` }
+      return { text: say('voice.level', { level: say(`voice.${level}`) }) }
     }
 
     const isOn = asked === 'on' ? true : asked === 'off' ? false : !(await isVoiceOn($))
     await writePrefs($, { voice: isOn })
 
-    return { text: isOn ? '貓語氣打開了，喵。' : '貓語氣關掉了，回到一般說話方式。' }
+    return { text: say(isOn ? 'voice.on' : 'voice.off') }
   })
 
   on('prompt.compose', async ($, e, next) => {
@@ -405,13 +464,10 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'cat' }, async $ => {
-    const opened = await $.ui.open({ id: PANE, title: TITLE })
+    const say = await sayNow($)
+    const opened = await $.ui.open({ id: PANE, title: say('pane.title') })
 
-    return {
-      text: opened.isPlaced
-        ? '貓咪面板打開了。'
-        : `貓咪面板現在顯示不出來：${opened.reason}`,
-    }
+    return { text: opened.isPlaced ? say('pane.opened') : say('pane.failed', { reason: opened.reason }) }
   })
 
   on('turn.step', async function* ($, e, next) {
@@ -440,6 +496,11 @@ export const register: Register = on => {
     if (isOurs) {
       become($, 'working')
       getToWork($)
+
+      // Its last call wins: the box is filled once, as the turn ends.
+      if ('tool' in e && e.tool === NEXT_STEP_BOX) {
+        asksAtEnd = asksInTheBox(e)
+      }
     }
 
     // Beneath run the card that asks the person and the tool itself, with no
@@ -475,10 +536,17 @@ export const register: Register = on => {
 
   on('turn.complete', ($, e, next) => {
     if (e.agentId === undefined) {
-      become($, 'resting')
+      const asked = asksAtEnd
+      asksAtEnd = false
 
-      if (e.reason === 'answer') {
-        callOut($)
+      if (asked && e.reason === 'answer') {
+        askInTheBox($)
+      } else {
+        become($, 'resting')
+
+        if (e.reason === 'answer') {
+          callOut($)
+        }
       }
     }
 
@@ -486,7 +554,13 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const pose = look(await read($, coat), await read($, cushion), (await read($, sad)) ? 'sad' : await read($, mood))
+    const pose = look(
+      await read($, coat),
+      await read($, cushion),
+      await read($, place),
+      (await read($, sad)) ? 'sad' : await read($, mood),
+      await sayNow($),
+    )
 
     if (e.surface === 'terminal') {
       const { Text } = $.ui.resolve(e)
@@ -538,7 +612,12 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="row" alignItems="flex-start" gap="sm">
-        <Svg source={COATS[await read($, coat)].AVATAR} alt="A cat's face" width={32} height={32} />
+        <Svg
+          source={posesNow(await read($, coat), await read($, cushion), await read($, place)).AVATAR}
+          alt="A cat's face"
+          width={32}
+          height={32}
+        />
         <Box flexGrow={1} flexShrink={1}>
           {await next(e)}
         </Box>

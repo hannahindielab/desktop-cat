@@ -14,6 +14,7 @@ const {
   isTimeToCallAgain,
   pickMood,
   readSessions,
+  wantsCallAgain,
 } = require('../src/mood')
 
 const NOW = 1_000_000_000
@@ -60,6 +61,17 @@ test('still waiting on the person, the cat meows again every few minutes', () =>
   assert.equal(isTimeToCallAgain('calling', NOW - CALL_AGAIN_MS, NOW), true)
   assert.equal(isTimeToCallAgain('working', NOW - 10 * CALL_AGAIN_MS, NOW), false, 'answered')
   assert.equal(CALL_AGAIN_MS, 3 * 60 * 1000)
+})
+
+test('a question left in the next-step box meows once; a card holding the work up meows again', () => {
+  const box = { mood: 'calling', updatedAt: NOW - 1000, callsAgain: false }
+  const card = { mood: 'calling', updatedAt: NOW - 1000, callsAgain: true }
+
+  assert.equal(wantsCallAgain([box], NOW), false, 'the box: once only')
+  assert.equal(wantsCallAgain([card], NOW), true, 'a card: again every few minutes')
+  assert.equal(wantsCallAgain([box, card], NOW), true, 'one card waiting is enough')
+  assert.equal(wantsCallAgain([{ ...card, mood: 'working' }], NOW), false, 'answered')
+  assert.equal(wantsCallAgain([{ ...card, updatedAt: NOW - ACTIVE_FOR_MS - 1 }], NOW), false, 'gone quiet')
 })
 
 test('a conversation that went quiet stops counting', () => {
@@ -110,10 +122,12 @@ test('reading clears what is over and survives a half-written file', () => {
 
   const sessions = readSessions(dir, NOW)
 
+  // A report with no word on meowing again is an older Claude cat's: it wants it.
+  const calm = { ended: false, callsAgain: true }
   assert.deepEqual(sessions.sort((a, b) => a.id.localeCompare(b.id)), [
-    { mood: 'working', updatedAt: NOW, ended: false, calledAt: 0, sadAt: 0, movedOn: false, id: 'busy' },
-    { mood: 'calling', updatedAt: NOW, ended: false, calledAt: NOW, sadAt: 0, movedOn: false, id: 'calling' },
-    { mood: 'talking', updatedAt: NOW, ended: false, calledAt: 0, sadAt: NOW - 5, movedOn: true, id: 'sad' },
+    { mood: 'working', updatedAt: NOW, ...calm, calledAt: 0, sadAt: 0, movedOn: false, id: 'busy' },
+    { mood: 'calling', updatedAt: NOW, ...calm, calledAt: NOW, sadAt: 0, movedOn: false, id: 'calling' },
+    { mood: 'talking', updatedAt: NOW, ...calm, calledAt: 0, sadAt: NOW - 5, movedOn: true, id: 'sad' },
   ])
   assert.ok(!fs.existsSync(path.join(dir, 'ended.json')))
   assert.ok(!fs.existsSync(path.join(dir, 'ancient.json')))

@@ -6,7 +6,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'"
     />
-    <title>外觀設定</title>
+    <title data-i18n="look.title"></title>
     <style>
       /* Warm paper, like the cat's bubbles and the cans' hint; what is
          chosen is marked in the bubbles' coffee-brown ink. */
@@ -109,6 +109,41 @@
         z-index: 2;
       }
 
+      /* Two pages under the one picture: how the cat looks, and where it is. */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        padding: 8px 20px 0;
+        border-bottom: 1px solid var(--edge);
+      }
+
+      .tab {
+        margin-bottom: -1px;
+        padding: 8px 14px 9px;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: none;
+        color: var(--text-2);
+        font: 500 14px var(--words);
+        cursor: pointer;
+        transition: color 0.15s;
+      }
+
+      .tab:hover {
+        color: var(--text-1);
+      }
+
+      .tab.on {
+        color: var(--text-1);
+        border-bottom-color: var(--chosen);
+      }
+
+      .tab:focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: -2px;
+        border-radius: 6px;
+      }
+
       main {
         padding: 4px 20px 6px;
       }
@@ -149,6 +184,11 @@
         gap: 8px;
       }
 
+      /* Under its name, a row of choices shares the whole width. */
+      .setting.wide .segment {
+        flex: 1;
+      }
+
       .what {
         font: 500 14px/1.3 var(--words);
       }
@@ -173,11 +213,13 @@
         padding: 2px;
       }
 
+      /* A choice's name stays on one line. */
       .segment {
         border: 0;
         background: none;
         color: var(--text-2);
         font: 500 13px var(--words);
+        white-space: nowrap;
         padding: 4px 12px;
         border-radius: 7px;
         cursor: pointer;
@@ -292,39 +334,65 @@
         <div class="cans" id="cans"></div>
       </div>
     </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab on" role="tab" data-tab="looks" aria-selected="true" data-i18n="look.tabLooks"></button>
+      <button class="tab" role="tab" data-tab="place" aria-selected="false" data-i18n="look.tabPlace"></button>
+    </nav>
     <main>
-      <section>
-        <h2>貓咪</h2>
-        <div class="setting">
-          <div class="what">花色</div>
-          <div class="segments" data-look="coat"></div>
-        </div>
-        <div class="setting">
-          <div class="what">大小<small>桌上的貓有多大</small></div>
-          <div class="segments" data-look="size"></div>
-        </div>
-        <div class="setting wide">
-          <div class="what">坐墊顏色<span class="named" data-named="cushion"></span></div>
-          <div class="swatches" data-look="cushion"></div>
-        </div>
-      </section>
-      <section>
-        <h2>罐罐</h2>
-        <div class="setting">
-          <div class="what">顯示罐罐<small>看 Claude 的用量還剩多少</small></div>
-          <button class="switch" data-switch="cansShown" role="switch" aria-label="顯示罐罐"><i></i></button>
-        </div>
-        <div class="setting wide" data-needs-cans>
-          <div class="what">罐罐顏色<span class="named" data-named="canLabel"></span></div>
-          <div class="swatches" data-look="canLabel"></div>
-        </div>
-        <div class="setting wide" data-needs-cans>
-          <div class="what">罐罐口味<span class="named" data-named="canFood"></span></div>
-          <div class="swatches" data-look="canFood"></div>
-        </div>
-      </section>
+      <div data-page="looks">
+        <section>
+          <h2 data-i18n="look.cat"></h2>
+          <div class="setting">
+            <div class="what" data-i18n="look.coat"></div>
+            <div class="segments" data-look="coat"></div>
+          </div>
+          <div class="setting">
+            <div class="what"><span data-i18n="look.size"></span><small data-i18n="look.sizeHint"></small></div>
+            <div class="segments" data-look="size"></div>
+          </div>
+          <div class="setting wide" data-follows-place>
+            <div class="what"><span data-i18n="look.cushion"></span><span class="named" data-named="cushion"></span></div>
+            <div class="swatches" data-look="cushion"></div>
+          </div>
+        </section>
+        <section>
+          <h2 data-i18n="look.cans"></h2>
+          <div class="setting">
+            <div class="what"><span data-i18n="look.cansShown"></span><small data-i18n="look.cansShownHint"></small></div>
+            <button class="switch" data-switch="cansShown" role="switch" data-i18n="[aria-label]look.cansShown"><i></i></button>
+          </div>
+          <div class="setting wide" data-needs-cans>
+            <div class="what"><span data-i18n="look.canLabel"></span><span class="named" data-named="canLabel"></span></div>
+            <div class="swatches" data-look="canLabel"></div>
+          </div>
+          <div class="setting wide" data-needs-cans>
+            <div class="what"><span data-i18n="look.canFood"></span><span class="named" data-named="canFood"></span></div>
+            <div class="swatches" data-look="canFood"></div>
+          </div>
+        </section>
+      </div>
+      <div data-page="place" hidden>
+        <section>
+          <div class="setting wide">
+            <div class="what"><span data-i18n="look.place"></span><small data-i18n="look.placeHint"></small></div>
+            <div class="segments" data-look="place"></div>
+          </div>
+          <div class="setting" data-needs-place>
+            <div class="what"><span data-i18n="look.placeVolume"></span><small data-i18n="look.placeVolumeHint"></small></div>
+            <div class="segments" data-look="placeVolume"></div>
+          </div>
+          <div class="setting" data-needs-place>
+            <div class="what"><span data-i18n="look.effects"></span><small data-i18n="look.effectsHint"></small></div>
+            <button class="switch" data-switch="effectsOn" role="switch" data-i18n="[aria-label]look.effects"><i></i></button>
+          </div>
+        </section>
+      </div>
     </main>
+    <script src="../node_modules/i18next/dist/umd/i18next.min.js"></script>
+    <script src="text.js"></script>
     <script src="poses.js"></script>
+    <script src="place-art.js"></script>
+    <script src="dress.js"></script>
     <script src="cans.js"></script>
     <script src="look.js"></script>
   </body>

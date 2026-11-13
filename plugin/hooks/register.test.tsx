@@ -1,6 +1,9 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
+import { PLACE_ART } from './place-art'
+import { SOURCE, TABLES, pickLanguage, textIn } from './text'
+
 const SPINNER = {
   plugin: 'desktop-cat',
   component: 'Spinner',
@@ -154,7 +157,7 @@ test('each conversation reports its mood to its own file, in order', async ($, o
   await $.session.end({ reason: 'other', sessionId: 'abc', resume: { id: 'abc' } })
 
   const path = 'C:/Users/me/.desktop-cat/sessions/abc.json'
-  const calm = { sadAt: 0, movedOn: false }
+  const calm = { callsAgain: true, sadAt: 0, movedOn: false }
   expect(writes).toEqual([
     { path, mood: 'working', updatedAt: 1234, ended: false, calledAt: 0, ...calm },
     { path, mood: 'resting', updatedAt: 1234, ended: false, calledAt: 0, ...calm },
@@ -459,6 +462,62 @@ test('the pane cat rests until a turn starts', async $ => {
   expect(await paneCat($)).toEqual({ alt: 'A cat asleep on its cushion', label: '休息中' })
 })
 
+/** The reports the desktop cat reads, for a turn that ends with the next-step box. */
+const endingWithTheBox = (on: Parameters<TestBody>[1]) => {
+  const written: { mood: string; calledAt: number; callsAgain: boolean }[] = []
+
+  on('env.get', () => ({ value: 'C:/Users/me' }))
+  on('session.id', () => ({ value: 'abc' }))
+  const clock = mock.clock(on, { now: 1234 })
+  on('fs.write', (_, e) => {
+    written.push(JSON.parse(e.text))
+
+    return { value: undefined }
+  })
+  on('tool.call', () => ({ result: {} }))
+  on('turn.complete', () => ({ text: '' }))
+
+  return { written, clock }
+}
+
+const ANSWERED = { reason: 'answer', answer: '', durationMs: 1, isAborted: false, turnId: 't' } as const
+
+test('a turn ending on a question in the next-step box: the cat waits on the person, meowing once', async ($, on) => {
+  const { written, clock } = endingWithTheBox(on)
+
+  await $.tool.call({ tool: 'mcp__ccd_turn__wrap_up', recap: 'Fixed it.', ask: 'Install it?' })
+  await $.turn.complete(ANSWERED)
+  await clock.settle()
+
+  const waiting = await paneCat($)
+  expect(waiting.label).toBe('等你回應')
+  expect(waiting.alt).toMatch(/tapping the table/)
+  // One meow, and no asking the desktop cat to meow again: the box seldom holds anything up.
+  expect(written.at(-1)).toMatchObject({ mood: 'calling', calledAt: 1234, callsAgain: false })
+})
+
+test('a next-step box with no question ends the turn as before: the cat rests', async ($, on) => {
+  const { written, clock } = endingWithTheBox(on)
+
+  await $.tool.call({ tool: 'mcp__ccd_turn__wrap_up', recap: 'Done.' })
+  await $.turn.complete(ANSWERED)
+  await clock.settle()
+
+  expect((await paneCat($)).label).toBe('休息中')
+  expect(written.at(-1)).toMatchObject({ mood: 'resting', calledAt: 1234 })
+})
+
+test('a card that holds the work up still asks the desktop cat to meow again', async ($, on) => {
+  const { written, clock } = endingWithTheBox(on)
+
+  on('tool.check', () => ({ decision: 'ask' }))
+  on('classic.PermissionRequest', () => ({ decision: { behavior: 'allow' } }))
+  await $.tool.call({ tool: 'Bash', command: 'rm x' })
+  await clock.settle()
+
+  expect(written.find(report => report.mood === 'calling')).toMatchObject({ callsAgain: true })
+})
+
 test('the pane cat works during a tool call and rests when the turn ends', async ($, on) => {
   on('tool.call', () => ({ result: {} }))
   on('turn.complete', () => ({ text: '' }))
@@ -735,6 +794,77 @@ test('the cat sleeps on the cushion colour the desktop cat chose, and changes wi
   expect(await asleep()).toContain('fill:#9FAB87')
 })
 
+// The places, named only in their own drawings (place-art.ts): a copy without
+// them (the public one, for now) has none, and the cat stays as it is at home.
+const PLACE_NAMES = Object.keys(PLACE_ART) as (keyof typeof PLACE_ART)[]
+/** The things a drawing puts on the cat or beside it, by the names it gives them. */
+const thingsIn = (...drawings: string[]) => [...drawings.join('').matchAll(/data-thing="([^"]+)"/g)].map(match => match[1])
+
+test('in the place the desktop cat is in, the cat dresses for it and sleeps on its cushion', async ($, on) => {
+  if (PLACE_NAMES.length < 3) {
+    return
+  }
+
+  // The first place and the third, as this test has always taken them. (The
+  // second and the fourth draw a pane over the engine's 131072-character limit
+  // for now, so the pane is left undrawn there: to be made lighter.)
+  const [first, , second] = PLACE_NAMES
+  const files = desktopFiles(on, { place: first, cushion: 'berry' })
+  const clock = mock.clock(on, { now: 1234 })
+  on('command.register', () => ({ value: { command: 'cat' } }))
+  on('tool.register', () => ({ value: { tool: SAD_TOOL } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+
+    return <Text>engine</Text>
+  })
+  await $.session.start(START)
+  const picture = async (site: typeof PANE | typeof REPLY) => {
+    const ui = await $.ui.mount({ ...site, surface: 'desktop' })
+    const cat = await ui.find({ type: 'Svg' })
+    await ui.unmount()
+
+    return String(cat?.props.source)
+  }
+
+  // Asleep in the first place: what it wears and has before the cushion, on
+  // the place's own cushion rather than the one chosen.
+  const asleepIn = (place: keyof typeof PLACE_ART) => thingsIn(PLACE_ART[place].head.lying, PLACE_ART[place].beside.lying)
+  const inFirst = await picture(PANE)
+  expect(asleepIn(first).length).toBeGreaterThan(0)
+  for (const thing of asleepIn(first)) {
+    expect(inFirst).toContain(`data-thing="${thing}"`)
+  }
+  expect(inFirst).toContain(`fill:${PLACE_ART[first].cushion.colour}`)
+  expect(inFirst).not.toContain('fill:#B84C67')
+  // Beside each reply, its face with what it wears on its head.
+  const onItsHead = thingsIn(PLACE_ART[first].head.sitting).filter(thing => thingsIn(PLACE_ART[first].head.lying).includes(thing))
+  const reply = await picture(REPLY)
+  for (const thing of onItsHead) {
+    expect(reply).toContain(`data-thing="${thing}"`)
+  }
+
+  files.set(PREFS, JSON.stringify({ place: second, cushion: 'berry' }))
+  await clock.advance(2000)
+  const inSecond = await picture(PANE)
+  for (const thing of asleepIn(second)) {
+    expect(inSecond).toContain(`data-thing="${thing}"`)
+  }
+  for (const thing of asleepIn(first).filter(thing => !asleepIn(second).includes(thing))) {
+    expect(inSecond).not.toContain(`data-thing="${thing}"`)
+  }
+
+  // Back home, or somewhere this cat does not know: bare, on the cushion chosen.
+  for (const place of ['none', 'moon']) {
+    files.set(PREFS, JSON.stringify({ place, cushion: 'berry' }))
+    await clock.advance(2000)
+    const home = await picture(PANE)
+    expect(home).not.toContain('data-thing=')
+    expect(home).toContain('fill:#B84C67')
+  }
+})
+
 test('the cans hear how much of each window is left and when it fills again', async ($, on) => {
   const written: { path: string; text: string }[] = []
   on('env.get', (_, e) => ({ value: e.name === 'USERPROFILE' ? 'C:/Users/me' : undefined }))
@@ -776,4 +906,37 @@ test('a cat with no choice made yet wears the calico coat', async ($, on) => {
   await ui.unmount()
 
   expect(String(cat?.props.source)).toContain('#E58B3F')
+})
+test('the words come from the Chinese table, the same words as before', async () => {
+  const say = textIn(SOURCE)
+
+  expect(say('pat.praise', { count: 2 })).toBe('（摸摸頭 ×2）做得很好！')
+  expect(say('pane.failed', { reason: 'no room' })).toBe('貓咪面板現在顯示不出來：no room')
+  expect(textIn('fr')('pose.resting')).toBe('休息中')
+  expect(Object.keys(TABLES)).toEqual(['zh-Hant', 'en'])
+})
+
+test('the English table says the same things, with the same blanks to fill', async () => {
+  const names = (table: object, prefix = ''): string[] =>
+    Object.entries(table).flatMap(([name, words]) =>
+      typeof words === 'object' && words !== null ? names(words, `${prefix}${name}.`) : [`${prefix}${name}`],
+    )
+
+  expect(names(TABLES.en).sort()).toEqual(names(TABLES[SOURCE]).sort())
+  expect(textIn('en')('pat.praise', { count: 2 })).toBe('(head pat ×2) Good job!')
+  expect(textIn('en')('pose.calling')).toBe('Your turn')
+})
+
+test('the language is picked as the desktop cat picks it', async () => {
+  // With an English table as well as the Chinese one, as there will be.
+  const both = ['zh-Hant', 'en']
+
+  expect(pickLanguage(undefined, ['zh-TW'], both)).toBe('zh-Hant')
+  expect(pickLanguage(undefined, ['zh-HK'], both)).toBe('zh-Hant')
+  expect(pickLanguage(undefined, ['en-GB'], both)).toBe('en')
+  expect(pickLanguage('en', ['zh-TW'], both)).toBe('en')
+  expect(pickLanguage('auto', ['zh-TW'], both)).toBe('zh-Hant')
+  expect(pickLanguage(undefined, ['ja-JP'], both)).toBe('en')
+  expect(pickLanguage(undefined, ['not a language!', 'zh-TW'], both)).toBe('zh-Hant')
+  expect(pickLanguage(undefined, ['ja-JP'], ['zh-Hant'])).toBe('zh-Hant')
 })

@@ -1,9 +1,21 @@
 export type Mood = 'resting' | 'waiting' | 'calling' | 'thinking' | 'working' | 'talking'
 export type Coat = 'calico' | 'tuxedo' | 'siamese'
 export type Cushion = 'matcha' | 'milk-tea' | 'dusty-pink' | 'dusty-blue' | 'lavender' | 'night-sky' | 'berry' | 'cement'
+// Home, or one of the places in hooks/place-art.ts (none in a copy without them).
+export type Place = 'none' | import('../hooks/place-art').PlaceName
+// A language tag there is a table for in hooks/text.ts, such as 'zh-Hant'.
+export type Language = string
 
 declare module 'claude-code' {
   interface PluginState {
-    'desktop-cat': { mood: Mood; lastPraise: number; sad: boolean; coat: Coat; cushion: Cushion }
+    'desktop-cat': {
+      mood: Mood
+      lastPraise: number
+      sad: boolean
+      coat: Coat
+      cushion: Cushion
+      place: Place
+      language: Language
+    }
   }
 }

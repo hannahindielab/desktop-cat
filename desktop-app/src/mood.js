@@ -48,7 +48,7 @@ function pickMood(sessions, now, comfortedAt = 0) {
 }
 
 function parseSession(text) {
-  const { mood, updatedAt, ended, calledAt, sadAt, movedOn } = JSON.parse(text)
+  const { mood, updatedAt, ended, calledAt, callsAgain, sadAt, movedOn } = JSON.parse(text)
 
   return MOODS.has(mood) && Number.isFinite(updatedAt)
     ? {
@@ -56,6 +56,8 @@ function parseSession(text) {
         updatedAt,
         ended: ended === true,
         calledAt: Number.isFinite(calledAt) ? calledAt : 0,
+        // Older Claude cats never said: they all wanted the meow again.
+        callsAgain: callsAgain !== false,
         sadAt: Number.isFinite(sadAt) ? sadAt : 0,
         movedOn: movedOn === true,
       }
@@ -81,6 +83,14 @@ function hasNewCall(sessions, seen) {
 /** True when the cat, still waiting on the person, last meowed long enough ago. */
 const isTimeToCallAgain = (mood, meowedAt, now) =>
   mood === 'calling' && now - meowedAt >= CALL_AGAIN_MS
+
+/** True when a conversation waiting on the person wants the meow again: a card
+    holding the work up does; a question left in the next-step box at the end
+    of a turn meows once only, as it seldom holds anything up. */
+const wantsCallAgain = (sessions, now) =>
+  sessions.some(
+    session => session.mood === 'calling' && session.callsAgain && now - session.updatedAt < ACTIVE_FOR_MS,
+  )
 
 /** Reads every conversation's report and clears the ones that are over. */
 function readSessions(dir, now) {
@@ -131,4 +141,5 @@ module.exports = {
   isTimeToCallAgain,
   pickMood,
   readSessions,
+  wantsCallAgain,
 }

@@ -1,0 +1,75 @@
+{
+  "app": {
+    "name": "桌面貓"
+  },
+  "menu": {
+    "showCat": "顯示貓咪",
+    "look": "外觀設定",
+    "sound": "音效與音量",
+    "soundOn": "開啟音效",
+    "voice": "Claude 貓語氣",
+    "alwaysOnTop": "永遠在最上層",
+    "openAtLogin": "開機自動啟動",
+    "language": "語言",
+    "tip": "請貓貓吃罐罐",
+    "quit": "離開"
+  },
+  "language": {
+    "system": "使用系統設定",
+    "self": "繁體中文"
+  },
+  "look": {
+    "title": "外觀設定",
+    "tabLooks": "外觀",
+    "cat": "貓咪",
+    "coat": "花色",
+    "size": "大小",
+    "sizeHint": "桌上的貓有多大",
+    "cushion": "坐墊顏色",
+    "cans": "罐罐",
+    "cansShown": "顯示罐罐",
+    "cansShownHint": "看 Claude 的用量還剩多少",
+    "canLabel": "罐罐顏色",
+    "canFood": "罐罐口味"
+  },
+  "cans": {
+    "unknown": "還不知道罐罐剩多少",
+    "mealLeft": "這一餐剩 {{percent}}",
+    "weekLeft": "這週剩 {{percent}}",
+    "mealGone": "這一餐吃光了",
+    "weekGone": "這週吃光了",
+    "between": "・"
+  },
+  "coat": {
+    "calico": "三花",
+    "tuxedo": "賓士",
+    "siamese": "暹羅"
+  },
+  "size": {
+    "small": "小",
+    "medium": "中",
+    "large": "大"
+  },
+  "volume": {
+    "low": "小聲",
+    "medium": "中等",
+    "high": "大聲"
+  },
+  "colour": {
+    "coral": "珊瑚粉",
+    "matcha": "抹茶綠",
+    "milk-tea": "奶茶米",
+    "dusty-pink": "霧粉",
+    "dusty-blue": "霧藍",
+    "lavender": "薰衣草",
+    "night-sky": "夜空藍",
+    "berry": "莓果紅",
+    "cement": "水泥灰"
+  },
+  "food": {
+    "tuna": "鮪魚",
+    "salmon": "鮭魚",
+    "chicken": "雞肉",
+    "beef": "牛肉"
+  }
+}

@@ -6,7 +6,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; media-src 'self'; connect-src 'self'"
     />
-    <title>桌面貓</title>
+    <title data-i18n="app.name"></title>
     <style>
       html,
       body {
@@ -48,6 +48,15 @@
       #cat svg * {
         pointer-events: visiblePainted;
         cursor: grab;
+      }
+
+      /* The steam and the turning page, over the drawing they play on. */
+      #cat .prop-effects {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
       }
 
       body.dragging #cat svg * {
@@ -135,6 +144,20 @@
         color: #c25446;
       }
 
+      /* The meal and the week each stay on one line. When both don't fit,
+         renderer.js stacks them, and the mark between them goes. */
+      #hint .part {
+        white-space: nowrap;
+      }
+
+      #hint.stacked .part {
+        display: block;
+      }
+
+      #hint.stacked .between {
+        display: none;
+      }
+
       /* At night the paper turns warm dark brown, not black. */
       @media (prefers-color-scheme: dark) {
         #hint {
@@ -154,9 +177,16 @@
     <div id="cans"><div class="stack"></div></div>
     <div id="cat"></div>
     <div id="hint" role="tooltip"></div>
+    <script src="../node_modules/i18next/dist/umd/i18next.min.js"></script>
+    <script src="text.js"></script>
     <script src="poses.js"></script>
+    <script src="place-art.js"></script>
+    <script src="dress.js"></script>
     <script src="cans.js"></script>
     <script src="sound.js"></script>
+    <script src="place-sounds.js"></script>
+    <script src="ambience.js"></script>
+    <script src="prop-effects.js"></script>
     <script src="renderer.js"></script>
   </body>
 </html>

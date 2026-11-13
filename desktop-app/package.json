@@ -1,7 +1,7 @@
 {
   "name": "desktop-cat",
   "productName": "DesktopCat",
-  "version": "1.15.1",
+  "version": "1.24.0",
   "private": true,
   "description": "A cat on the desktop that follows what Claude is doing in every conversation",
   "license": "MIT",
@@ -11,11 +11,14 @@
     "poses": "node tools/build-poses.mjs",
     "cans": "node tools/build-cans.mjs",
     "site-art": "node tools/build-site-art.mjs",
-    "test": "node --test test/mood.test.js test/praise.test.js test/prefs.test.js test/usage.test.js && electron test/self-test.js",
-    "package": "electron-packager . DesktopCat --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --ignore=^/test --ignore=^/dist --ignore=^/tools"
+    "test": "node --test test/mood.test.js test/praise.test.js test/prefs.test.js test/usage.test.js test/i18n.test.js && electron test/self-test.js",
+    "package": "electron-packager . DesktopCat --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --ignore=\"^/test\" --ignore=\"^/dist\" --ignore=\"^/tools\""
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
     "electron": "44.9.0"
+  },
+  "dependencies": {
+    "i18next": "26.7.2"
   }
 }

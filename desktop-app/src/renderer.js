@@ -10,6 +10,10 @@ stage.style.inset = `${(room / (1 + 2 * room)) * 100}%`
 canStand.style.inset = stage.style.inset
 // The coat chosen in the menu, which the page starts in.
 let coat = window.POSES[query.get('coat')] === undefined ? 'calico' : query.get('coat')
+// Where the cat is, which it dresses for: none, or a place it has things for.
+let place = query.get('place') ?? 'none'
+// The little effects on the cat's things in a place, while effects are on.
+PropEffects.show({ on: query.get('effects') !== 'false' })
 
 /** Colours the cushion the cat lies on; its drawings take them from the page. */
 function lieOn({ colour, seam }) {
@@ -57,7 +61,8 @@ const LIE_DOWN_AFTER_MS = 5000
 
 // Carried around, the cat bends like jelly on a moving plate: its seat stays
 // put while its top lags behind, slanting side to side and squashing or
-// stretching up and down, and it wobbles back once it stops. Tuned by feel.
+// stretching up and down, and it wobbles back once it stops. Tuned by feel
+// on a page made to try them. It bends about the spot it sits on.
 const JELLY = {
   slantPerSpeed: 0.0018, // degrees for each pixel a second
   mostSlant: 12, // degrees
@@ -78,6 +83,8 @@ let hasLainDown = true
 let cans = { count: 5, level: 'full', meal: null, week: null }
 let cansShown = true
 let hintTimer = null
+// The window's words, once the main program has sent them (src/text.js).
+let t = () => ''
 let isFadingOut = false
 let fadesOut = 0
 
@@ -101,20 +108,26 @@ function draw(pose) {
   const source = window.POSES[coat][pose]
   const { dataset } = document.body
 
-  if (source === undefined || (dataset.pose === pose && dataset.coat === coat)) {
+  if (source === undefined || (dataset.pose === pose && dataset.coat === coat && dataset.place === place)) {
     return
   }
 
-  const drawing = new DOMParser().parseFromString(source, 'image/svg+xml')
+  const drawing = new DOMParser().parseFromString(window.dressed(source, place), 'image/svg+xml')
   const root = document.adoptNode(drawing.documentElement)
-  stage.replaceChildren(root)
+  stage.replaceChildren(root, PropEffects.canvas)
   // Its moves play from their start, the way the pose begins, however long the page has been open.
   root.setCurrentTime(0)
   const view = root.viewBox.baseVal
+  PropEffects.show({
+    effects: window.PLACE_ART[place]?.effects ?? null,
+    lying: isLying(pose),
+    view: { x: view.x, y: view.y, width: view.width, height: view.height },
+  })
   const { seat } = isLying(pose) ? LYING : SITTING
   stage.style.transformOrigin = `${((seat.x - view.x) / view.width) * 100}% ${((seat.y - view.y) / view.height) * 100}%`
   dataset.pose = pose
   dataset.coat = coat
+  dataset.place = place
   document.body.classList.toggle('lying', isLying(pose))
   Sound.setLoop('typing', pose === 'working')
   Sound.setLoop('purr', pose === 'pet-head' || pose === 'rest-head')
@@ -125,6 +138,14 @@ function draw(pose) {
 function wear(wanted) {
   if (window.POSES[wanted] !== undefined && wanted !== coat) {
     coat = wanted
+    draw(document.body.dataset.pose)
+  }
+}
+
+/** Goes to another place, or home, dressing for it in whatever pose the cat is in. */
+function goTo(wanted) {
+  if (wanted !== place) {
+    place = wanted
     draw(document.body.dataset.pose)
   }
 }
@@ -156,35 +177,58 @@ const isCansAt = (x, y) => cansShown && isOnDrawing(canStack, x, y)
 // The cans count as the cat's: they keep the window's clicks, and carry it.
 const isCatAt = (x, y) => isOnDrawing(stage, x, y) || isCansAt(x, y)
 
+// Stands in for the figure while a sentence is looked up, so that each
+// language's table decides where in its sentence the figure goes.
+const FIGURE = '\u{E000}'
+
 /** The hint's words: what is left of this meal and of the week, red when nearly gone. */
 function hintWords() {
   if (cans.meal === null && cans.week === null) {
-    return [document.createTextNode('還不知道罐罐剩多少')]
+    return [document.createTextNode(t('cans.unknown'))]
   }
 
-  const part = (name, left) => {
+  // `of` is 'meal' or 'week', each with whole sentences of its own in the tables.
+  const part = (of, left) => {
     const words = document.createElement('span')
-
-    if (left < 20) {
-      words.className = 'low'
-    }
+    words.className = left < 20 ? 'part low' : 'part'
 
     if (left === 0) {
-      words.textContent = `${name}吃光了`
+      words.textContent = t(`cans.${of}Gone`)
     } else {
       const figure = document.createElement('b')
-      figure.textContent = `${left}%`
-      words.append(`${name}剩 `, figure)
+      figure.textContent = new Intl.NumberFormat(document.documentElement.lang, { style: 'percent' }).format(left / 100)
+      const [before, after = ''] = t(`cans.${of}Left`, { percent: FIGURE }).split(FIGURE)
+      words.append(before, figure, after)
     }
 
     return words
   }
   const parts = [
-    ...(cans.meal === null ? [] : [part('這一餐', cans.meal)]),
-    ...(cans.week === null ? [] : [part('這週', cans.week)]),
+    ...(cans.meal === null ? [] : [part('meal', cans.meal)]),
+    ...(cans.week === null ? [] : [part('week', cans.week)]),
   ]
 
-  return parts.flatMap((words, i) => (i === 0 ? [words] : ['・', words]))
+  return parts.flatMap((words, i) => {
+    if (i === 0) {
+      return [words]
+    }
+
+    const between = document.createElement('span')
+    between.className = 'between'
+    between.textContent = t('cans.between')
+    return [between, words]
+  })
+}
+
+/** One line when the hint fits the window, else one part under the other:
+    the line breaks only between the meal and the week, never inside one. */
+function fitHint() {
+  hint.classList.remove('stacked')
+  const [first, ...rest] = hint.querySelectorAll('.part')
+
+  if (rest.some(part => part.offsetTop > first.offsetTop)) {
+    hint.classList.add('stacked')
+  }
 }
 
 /** Draws the stack the cans show now, in their colours, or nothing when switched off. */
@@ -199,6 +243,7 @@ function fillCans() {
   }
 
   hint.replaceChildren(...hintWords())
+  fitHint()
 
   if (!cansShown) {
     hideHint()
@@ -220,6 +265,8 @@ function showHint() {
   const box = canStack.getBoundingClientRect()
   hint.style.bottom = `${innerHeight - box.top + 6}px`
   hint.style.right = `${Math.max(4, innerWidth - box.right)}px`
+  // The window may have changed size with the cat since the words came.
+  fitHint()
   hint.classList.add('shown')
 }
 
@@ -493,10 +540,16 @@ window.addEventListener('contextmenu', event => {
 })
 
 window.desktopCat.onMood(show)
-window.desktopCat.onSound(Sound.configure)
+// The cat's own sounds, and the sound of the place it is in.
+window.desktopCat.onSound(sound => {
+  Sound.configure(sound)
+  Ambience.configure(sound)
+})
 window.desktopCat.onMeow(() => Sound.shot('meow'))
 window.desktopCat.onCoat(wear)
 window.desktopCat.onCushion(lieOn)
+window.desktopCat.onPlace(goTo)
+window.desktopCat.onEffects(isOn => PropEffects.show({ on: isOn }))
 window.desktopCat.onUsage(shown => {
   cans = shown
   fillCans()
@@ -507,3 +560,12 @@ window.desktopCat.onFadeIn(fadeIn)
 show('resting')
 fillCans()
 window.desktopCat.ready()
+// The words come a moment later; the hint is filled again with them, and again
+// whenever another language is picked in the menu.
+const askForText = () =>
+  window.startText(window.desktopCat.text).then(found => {
+    t = found
+    fillCans()
+  })
+askForText()
+window.desktopCat.onTextChanged(askForText)

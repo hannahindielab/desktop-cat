@@ -1,0 +1,75 @@
+{
+  "app": {
+    "name": "Desktop Cat"
+  },
+  "menu": {
+    "showCat": "Show cat",
+    "look": "Personalize",
+    "sound": "Sound",
+    "soundOn": "Play sounds",
+    "voice": "Cat-style replies",
+    "alwaysOnTop": "Always on top",
+    "openAtLogin": "Run at startup",
+    "language": "Language",
+    "tip": "Buy the cat a can",
+    "quit": "Exit"
+  },
+  "language": {
+    "system": "Use system setting",
+    "self": "English"
+  },
+  "look": {
+    "title": "Personalize",
+    "tabLooks": "Appearance",
+    "cat": "Cat",
+    "coat": "Coat",
+    "size": "Size",
+    "sizeHint": "How big it is on your desktop",
+    "cushion": "Cushion color",
+    "cans": "Cans",
+    "cansShown": "Show cans",
+    "cansShownHint": "See how much Claude usage you have left",
+    "canLabel": "Can color",
+    "canFood": "Flavor"
+  },
+  "cans": {
+    "unknown": "Not sure how much is left yet",
+    "mealLeft": "This meal: {{percent}} left",
+    "weekLeft": "This week: {{percent}} left",
+    "mealGone": "This meal: all eaten",
+    "weekGone": "This week: all eaten",
+    "between": " · "
+  },
+  "coat": {
+    "calico": "Calico",
+    "tuxedo": "Tuxedo",
+    "siamese": "Siamese"
+  },
+  "size": {
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large"
+  },
+  "volume": {
+    "low": "Quiet",
+    "medium": "Normal",
+    "high": "Loud"
+  },
+  "colour": {
+    "coral": "Coral pink",
+    "matcha": "Matcha green",
+    "milk-tea": "Milk tea",
+    "dusty-pink": "Dusty pink",
+    "dusty-blue": "Dusty blue",
+    "lavender": "Lavender",
+    "night-sky": "Midnight blue",
+    "berry": "Berry red",
+    "cement": "Concrete gray"
+  },
+  "food": {
+    "tuna": "Tuna",
+    "salmon": "Salmon",
+    "chicken": "Chicken",
+    "beef": "Beef"
+  }
+}

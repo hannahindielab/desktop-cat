@@ -5,18 +5,21 @@ const path = require('node:path')
 // the colour of the cushion they sleep on, and whether Claude talks like a
 // cat. This cat's menu and /cat-voice write them, each keeping what the other
 // wrote. The cushions come from the Claude cat's drawings
-// (tools/build-poses.mjs), the first being the one it starts on.
+// (tools/build-poses.mjs), the first being the one it starts on. Every choice
+// here is known by its id; its name in each language is in src/locales
+// (coat.calico, colour.matcha, food.tuna).
 const CUSHIONS = require('./cushions.json')
-const COATS = [
-  { id: 'calico', label: '三花' },
-  { id: 'tuxedo', label: '賓士' },
-  { id: 'siamese', label: '暹羅' },
-]
+const COATS = [{ id: 'calico' }, { id: 'tuxedo' }, { id: 'siamese' }]
 const DEFAULT_COAT = 'calico'
 // How the cans beside the cat look, the desktop cat's own choice: the colour
 // of their labels and the meat in them, from the cans' drawing
 // (tools/build-cans.mjs), the first of each being the one they start with.
 const { labels: CAN_LABELS, foods: CAN_FOODS } = require('./can-choices.json')
+// Where the cat is, also shared: none at first, or a place with its own
+// sounds, where the cat dresses for it and lies on the place's own cushion
+// instead of the one chosen. The places are in scenes.js; a copy without them
+// has home alone.
+const PLACES = [{ id: 'none' }, ...require('./scenes').PLACES]
 
 function readPrefs(file) {
   try {
@@ -45,6 +48,9 @@ const cushionOf = prefs =>
 const isVoiceOn = prefs => prefs.voice !== false
 const canLabelOf = id => CAN_LABELS.find(label => label.id === id) ?? CAN_LABELS[0]
 const canFoodOf = id => CAN_FOODS.find(food => food.id === id) ?? CAN_FOODS[0]
+const placeOf = prefs => PLACES.find(place => place.id === prefs.place) ?? PLACES[0]
+/** The cushion the cat lies on now: its place's, or else the one chosen. */
+const cushionNow = prefs => placeOf(prefs).cushion ?? cushionOf(prefs)
 
 module.exports = {
   CAN_FOODS,
@@ -52,11 +58,14 @@ module.exports = {
   COATS,
   CUSHIONS,
   DEFAULT_COAT,
+  PLACES,
   canFoodOf,
   canLabelOf,
   coatOf,
+  cushionNow,
   cushionOf,
   isVoiceOn,
+  placeOf,
   readPrefs,
   writePrefs,
 }

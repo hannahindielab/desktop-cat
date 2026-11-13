@@ -9,11 +9,14 @@ const {
   CAN_LABELS,
   COATS,
   CUSHIONS,
+  PLACES,
   canFoodOf,
   canLabelOf,
   coatOf,
+  cushionNow,
   cushionOf,
   isVoiceOn,
+  placeOf,
   readPrefs,
   writePrefs,
 } = require('../src/prefs')
@@ -58,7 +61,7 @@ test('the voice switched here keeps the coat', t => {
 test('three coats to choose from, the Siamese among them, each with a poses set', t => {
   const file = prefsFile(t)
 
-  assert.deepEqual(COATS.map(coat => coat.label), ['三花', '賓士', '暹羅'])
+  assert.deepEqual(COATS.map(coat => coat.id), ['calico', 'tuxedo', 'siamese'])
   writePrefs(file, { coat: 'siamese' })
   assert.equal(coatOf(readPrefs(file)), 'siamese')
 
@@ -91,15 +94,30 @@ test('the cushion: its colours by name, the first one when unknown, kept beside 
 
   const prefs = readPrefs(file)
   assert.equal(coatOf(prefs), 'tuxedo')
-  assert.deepEqual(cushionOf(prefs), { id: 'berry', label: '莓果紅', colour: '#B84C67', seam: '#903B4D' })
+  assert.deepEqual(cushionOf(prefs), { id: 'berry', colour: '#B84C67', seam: '#903B4D' })
   assert.equal(cushionOf({ cushion: 'plaid' }).id, 'matcha')
   assert.equal(CUSHIONS.length, 8)
 })
+
+// The places' own checks are in scenes-unit.js, in a copy that has places; the
+// public copy leaves both out for now, and has home alone.
+if (require('../src/scenes').PLACES.length > 0) {
+  require('./scenes-unit')
+} else {
+  test('with no places in this copy there is home alone, on the cushion chosen', t => {
+    const file = prefsFile(t)
+
+    assert.deepEqual(PLACES, [{ id: 'none' }])
+    writePrefs(file, { cushion: 'berry', place: 'anywhere' })
+    assert.equal(placeOf(readPrefs(file)).id, 'none', 'a place there is not: home')
+    assert.equal(cushionNow(readPrefs(file)).colour, '#B84C67', 'the cushion chosen')
+  })
+}
 
 test('the cans start coral with tuna in them, and keep to the colours and meats there are', () => {
   assert.deepEqual([canLabelOf(undefined).id, canFoodOf(undefined).id], ['coral', 'tuna'])
   assert.deepEqual([canLabelOf('berry').colour, canFoodOf('beef').food], ['#B84C67', '#B07D63'])
   assert.deepEqual([canLabelOf('plaid').id, canFoodOf('cake').id], ['coral', 'tuna'])
-  assert.deepEqual(CAN_LABELS.map(label => label.label), ['珊瑚粉', ...CUSHIONS.map(cushion => cushion.label)])
-  assert.deepEqual(CAN_FOODS.map(food => food.label), ['鮪魚', '鮭魚', '雞肉', '牛肉'])
+  assert.deepEqual(CAN_LABELS.map(label => label.id), ['coral', ...CUSHIONS.map(cushion => cushion.id)])
+  assert.deepEqual(CAN_FOODS.map(food => food.id), ['tuna', 'salmon', 'chicken', 'beef'])
 })

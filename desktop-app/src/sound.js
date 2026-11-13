@@ -63,7 +63,7 @@ const Sound = (() => {
       performance.now() - lastMew.at >= STUCK_AFTER_MS &&
       voice.currentTime <= lastMew.clock)
 
-  // Speakers or headphones plugged in or out: start afresh on what plays now.
+  // Speakers or earphones plugged in or out: start afresh on what plays now.
   navigator.mediaDevices?.addEventListener('devicechange', renewVoice)
   const loadRequest = new XMLHttpRequest()
   loadRequest.open('GET', 'sounds/meow.wav')
