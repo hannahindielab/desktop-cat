@@ -10,6 +10,7 @@ const {
   FORGET_AFTER_MS,
   SAD_AT_MOST_MS,
   SAD_AT_ONCE_MS,
+  chatToOpen,
   hasNewCall,
   isTimeToCallAgain,
   pickMood,
@@ -122,8 +123,9 @@ test('reading clears what is over and survives a half-written file', () => {
 
   const sessions = readSessions(dir, NOW)
 
-  // A report with no word on meowing again is an older Claude cat's: it wants it.
-  const calm = { ended: false, callsAgain: true }
+  // A report with no word on meowing again is an older Claude cat's: it wants
+  // it. One with no word of the Claude app has nothing there to open.
+  const calm = { ended: false, callsAgain: true, appSession: null }
   assert.deepEqual(sessions.sort((a, b) => a.id.localeCompare(b.id)), [
     { mood: 'working', updatedAt: NOW, ...calm, calledAt: 0, sadAt: 0, movedOn: false, id: 'busy' },
     { mood: 'calling', updatedAt: NOW, ...calm, calledAt: NOW, sadAt: 0, movedOn: false, id: 'calling' },
@@ -133,6 +135,48 @@ test('reading clears what is over and survives a half-written file', () => {
   assert.ok(!fs.existsSync(path.join(dir, 'ancient.json')))
   assert.ok(fs.existsSync(path.join(dir, 'half.json')))
   fs.rmSync(dir, { recursive: true })
+})
+
+test("a report keeps the Claude app's id for its conversation only in the shape the app's links take", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-cat-'))
+  const write = (name, appSession) =>
+    fs.writeFileSync(path.join(dir, name), JSON.stringify({ mood: 'calling', updatedAt: NOW, appSession }))
+
+  write('app.json', 'local_7c3db6d5-f7b7-42a3-ad49-f18ecc3fbe09')
+  write('odd.json', 'local_x&prompt=hello')
+  write('cloud.json', 'session_01AbC')
+  write('number.json', 42)
+  write('long.json', `local_${'a'.repeat(65)}`)
+
+  const kept = Object.fromEntries(readSessions(dir, NOW).map(session => [session.id, session.appSession]))
+  assert.deepEqual(kept, {
+    app: 'local_7c3db6d5-f7b7-42a3-ad49-f18ecc3fbe09',
+    odd: null,
+    cloud: null,
+    number: null,
+    long: null,
+  })
+  fs.rmSync(dir, { recursive: true })
+})
+
+test('a click opens the conversation that called last of those the Claude app can open', () => {
+  const asking = { mood: 'calling', updatedAt: NOW - 1000, calledAt: NOW - 1000, appSession: 'local_a' }
+  const newer = { ...asking, calledAt: NOW - 10, appSession: 'local_b' }
+  const terminal = { ...asking, calledAt: NOW, appSession: null }
+
+  assert.equal(chatToOpen([], NOW), null, 'nothing waiting')
+  assert.equal(chatToOpen([asking], NOW), 'local_a')
+  assert.equal(chatToOpen([asking, newer], NOW), 'local_b', 'the latest call')
+  assert.equal(chatToOpen([newer, asking], NOW), 'local_b', 'whatever the order')
+  assert.equal(chatToOpen([asking, terminal], NOW), 'local_a', 'a terminal has nothing to open')
+  assert.equal(chatToOpen([terminal], NOW), null)
+  assert.equal(chatToOpen([{ ...asking, mood: 'working' }], NOW), null, 'answered')
+  assert.equal(chatToOpen([{ ...asking, updatedAt: NOW - ACTIVE_FOR_MS - 1 }], NOW), null, 'gone quiet')
+  assert.equal(
+    chatToOpen([asking, { ...asking, updatedAt: NOW, appSession: 'local_c' }], NOW),
+    'local_c',
+    'called together: the latest news',
+  )
 })
 
 test('a conversation calling out is noticed once, and a restart stays quiet', () => {

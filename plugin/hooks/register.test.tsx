@@ -507,6 +507,32 @@ test('a next-step box with no question ends the turn as before: the cat rests', 
   expect(written.at(-1)).toMatchObject({ mood: 'resting', calledAt: 1234 })
 })
 
+test("in the Claude app the report carries the app's own id for the conversation, for the desktop cat to open it", async ($, on) => {
+  const written: { mood: string; appSession?: string }[] = []
+
+  on('env.get', (_, e) => ({
+    value:
+      e.name === 'USERPROFILE' ? 'C:/Users/me' : e.name === 'CLAUDE_CODE_HOST_SESSION_ID' ? 'local_1a2b-3c4d' : undefined,
+  }))
+  on('session.id', () => ({ value: 'abc' }))
+  const clock = mock.clock(on, { now: 1234 })
+  on('fs.write', (_, e) => {
+    written.push(JSON.parse(e.text))
+
+    return { value: undefined }
+  })
+  on('tool.call', () => ({ result: {} }))
+  on('tool.check', () => ({ decision: 'ask' }))
+  on('classic.PermissionRequest', () => ({ decision: { behavior: 'allow' } }))
+
+  await $.tool.call({ tool: 'Bash', command: 'rm x' })
+  await clock.settle()
+
+  expect(written.find(report => report.mood === 'calling')).toMatchObject({ appSession: 'local_1a2b-3c4d' })
+  // In a terminal the app sets nothing, and the report says nothing of it:
+  // the first test's reports hold no appSession at all.
+})
+
 test('a card that holds the work up still asks the desktop cat to meow again', async ($, on) => {
   const { written, clock } = endingWithTheBox(on)
 
@@ -801,14 +827,14 @@ const PLACE_NAMES = Object.keys(PLACE_ART) as (keyof typeof PLACE_ART)[]
 const thingsIn = (...drawings: string[]) => [...drawings.join('').matchAll(/data-thing="([^"]+)"/g)].map(match => match[1])
 
 test('in the place the desktop cat is in, the cat dresses for it and sleeps on its cushion', async ($, on) => {
-  if (PLACE_NAMES.length < 3) {
-    return
-  }
-
   // The first place and the third, as this test has always taken them. (The
   // second and the fourth draw a pane over the engine's 131072-character limit
   // for now, so the pane is left undrawn there: to be made lighter.)
   const [first, , second] = PLACE_NAMES
+
+  if (first === undefined || second === undefined) {
+    return
+  }
   const files = desktopFiles(on, { place: first, cushion: 'berry' })
   const clock = mock.clock(on, { now: 1234 })
   on('command.register', () => ({ value: { command: 'cat' } }))
@@ -922,7 +948,7 @@ test('the English table says the same things, with the same blanks to fill', asy
       typeof words === 'object' && words !== null ? names(words, `${prefix}${name}.`) : [`${prefix}${name}`],
     )
 
-  expect(names(TABLES.en).sort()).toEqual(names(TABLES[SOURCE]).sort())
+  expect(names(TABLES.en ?? {}).sort()).toEqual(names(TABLES[SOURCE] ?? {}).sort())
   expect(textIn('en')('pat.praise', { count: 2 })).toBe('(head pat ×2) Good job!')
   expect(textIn('en')('pose.calling')).toBe('Your turn')
 })

@@ -10,9 +10,19 @@
     "voice": "Cat-style replies",
     "alwaysOnTop": "Always on top",
     "openAtLogin": "Run at startup",
+    "autoCheckUpdates": "Automatically check for updates",
+    "downloadingUpdate": "Downloading update…",
     "language": "Language",
     "tip": "Buy the cat a can",
     "quit": "Exit"
+  },
+  "update": {
+    "title": "A new version of Desktop Cat is available",
+    "versions": "Desktop Cat {{version}} is available (you have {{current}}). Would you like to update now?",
+    "overwrites": "If you've changed Desktop Cat's code yourself, updating will overwrite your changes.",
+    "skip": "Skip this version",
+    "later": "Remind me later",
+    "install": "Install update"
   },
   "language": {
     "system": "Use system setting",

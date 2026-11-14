@@ -1,24 +1,70 @@
 {
   "name": "desktop-cat",
   "productName": "DesktopCat",
-  "version": "1.24.0",
+  "version": "1.27.0",
   "private": true,
   "description": "A cat on the desktop that follows what Claude is doing in every conversation",
   "license": "MIT",
+  "author": "hannahindielab",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "poses": "node tools/build-poses.mjs",
     "cans": "node tools/build-cans.mjs",
     "site-art": "node tools/build-site-art.mjs",
-    "test": "node --test test/mood.test.js test/praise.test.js test/prefs.test.js test/usage.test.js test/i18n.test.js && electron test/self-test.js",
-    "package": "electron-packager . DesktopCat --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --ignore=\"^/test\" --ignore=\"^/dist\" --ignore=\"^/tools\""
+    "test": "node --test test/mood.test.js test/praise.test.js test/prefs.test.js test/usage.test.js test/i18n.test.js test/updates.test.js && electron test/self-test.js",
+    "package": "electron-builder --win nsis --x64 --publish never",
+    "package:zip": "electron-packager . DesktopCat --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --ignore=\"^/test\" --ignore=\"^/dist\" --ignore=\"^/tools\""
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
-    "electron": "44.9.0"
+    "electron": "44.9.0",
+    "electron-builder": "26.18.0"
   },
   "dependencies": {
+    "electron-updater": "6.8.11",
     "i18next": "26.7.2"
+  },
+  "build": {
+    "appId": "com.hannahindielab.desktopcat",
+    "productName": "DesktopCat",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DesktopCat 桌面貓",
+      "uninstallDisplayName": "DesktopCat 桌面貓",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "DesktopCat-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "hannahindielab",
+        "repo": "desktop-cat"
+      }
+    ]
   }
 }

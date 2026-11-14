@@ -12,6 +12,9 @@ const SAD_AT_ONCE_MS = 10 * 1000
 const SAD_AT_MOST_MS = 3 * 60 * 1000
 // While a conversation waits on the person, the cat meows again this often.
 const CALL_AGAIN_MS = 3 * 60 * 1000
+// The Claude desktop app's own id for a conversation, in the shape its links
+// take: anything else in a report is not passed on to them.
+const APP_SESSION = /^local_[A-Za-z0-9-]{1,64}$/
 
 /**
  * Sad first, unless its head was petted since; then a conversation waiting on
@@ -48,7 +51,7 @@ function pickMood(sessions, now, comfortedAt = 0) {
 }
 
 function parseSession(text) {
-  const { mood, updatedAt, ended, calledAt, callsAgain, sadAt, movedOn } = JSON.parse(text)
+  const { mood, updatedAt, ended, calledAt, callsAgain, sadAt, movedOn, appSession } = JSON.parse(text)
 
   return MOODS.has(mood) && Number.isFinite(updatedAt)
     ? {
@@ -60,6 +63,9 @@ function parseSession(text) {
         callsAgain: callsAgain !== false,
         sadAt: Number.isFinite(sadAt) ? sadAt : 0,
         movedOn: movedOn === true,
+        // Where the Claude desktop app can open it: none from a terminal, or
+        // from an older Claude cat.
+        appSession: typeof appSession === 'string' && APP_SESSION.test(appSession) ? appSession : null,
       }
     : null
 }
@@ -91,6 +97,27 @@ const wantsCallAgain = (sessions, now) =>
   sessions.some(
     session => session.mood === 'calling' && session.callsAgain && now - session.updatedAt < ACTIVE_FOR_MS,
   )
+
+/** Of the conversations waiting on the person, the one that called last that
+    the Claude desktop app can open: its id there, or null when there is none. */
+function chatToOpen(sessions, now) {
+  const waiting = sessions.filter(
+    session => session.mood === 'calling' && session.appSession !== null && now - session.updatedAt < ACTIVE_FOR_MS,
+  )
+
+  if (waiting.length === 0) {
+    return null
+  }
+
+  const last = waiting.reduce((latest, session) =>
+    session.calledAt > latest.calledAt ||
+    (session.calledAt === latest.calledAt && session.updatedAt > latest.updatedAt)
+      ? session
+      : latest,
+  )
+
+  return last.appSession
+}
 
 /** Reads every conversation's report and clears the ones that are over. */
 function readSessions(dir, now) {
@@ -137,6 +164,7 @@ module.exports = {
   FORGET_AFTER_MS,
   SAD_AT_MOST_MS,
   SAD_AT_ONCE_MS,
+  chatToOpen,
   hasNewCall,
   isTimeToCallAgain,
   pickMood,

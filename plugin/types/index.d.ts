@@ -1,8 +1,9 @@
 export type Mood = 'resting' | 'waiting' | 'calling' | 'thinking' | 'working' | 'talking'
 export type Coat = 'calico' | 'tuxedo' | 'siamese'
 export type Cushion = 'matcha' | 'milk-tea' | 'dusty-pink' | 'dusty-blue' | 'lavender' | 'night-sky' | 'berry' | 'cement'
-// Home, or one of the places in hooks/place-art.ts (none in a copy without them).
-export type Place = 'none' | import('../hooks/place-art').PlaceName
+// 'none' for home, or the name of a place in hooks/place-art.ts (none in a copy
+// without them). Plain text: a contract holds no import, and so names no place.
+export type Place = string
 // A language tag there is a table for in hooks/text.ts, such as 'zh-Hant'.
 export type Language = string
 

@@ -21,6 +21,10 @@ contextBridge.exposeInMainWorld('desktopCat', {
   dragEnd: () => ipcRenderer.send('cat:drag-end'),
   showMenu: () => ipcRenderer.send('cat:menu'),
   pet: zone => ipcRenderer.send('cat:pet', zone),
+  // While the cat waits on the person in a conversation the Claude app can
+  // open, a click on it opens that conversation.
+  onOpensChat: allow => ipcRenderer.on('cat:opens-chat', (_, isOn) => allow(isOn)),
+  openChat: () => ipcRenderer.send('cat:open-chat'),
   // The words this window shows, in the language the cats speak.
   text: () => ipcRenderer.invoke('text:get'),
   // Another language was picked in the menu: time to ask for the words again.

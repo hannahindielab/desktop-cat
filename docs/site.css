@@ -684,6 +684,140 @@ footer .contact {
   font-size: 18px;
 }
 
+/* The changelog: under the home page's glow at its top, each version a card,
+   the newest first. */
+.glow-top {
+  background:
+    radial-gradient(60% 70% at 8% 18%, var(--glow-pink), transparent 70%) top / 100% 640px no-repeat,
+    radial-gradient(50% 60% at 92% 12%, var(--glow-lilac), transparent 70%) top / 100% 640px no-repeat,
+    var(--bg);
+}
+
+.top nav a[aria-current='page'] {
+  color: var(--link);
+}
+
+.page-head {
+  padding-block: 16px 48px;
+  text-align: center;
+}
+
+.page-head img {
+  width: 150px;
+  margin: 0 auto 8px;
+  filter: var(--cat-shadow);
+}
+
+.page-head h1 {
+  font-size: clamp(36px, 6vw, 56px);
+  letter-spacing: 0.02em;
+}
+
+.page-head p {
+  margin-top: 12px;
+  color: var(--ink-soft);
+  text-wrap: balance;
+}
+
+.releases {
+  display: grid;
+  gap: 24px;
+  max-width: 760px;
+  padding-bottom: 72px;
+}
+
+.release {
+  padding: 28px 36px 32px;
+  scroll-margin-top: 24px;
+}
+
+/* Words to read, not something to press: the card stays put under the pointer. */
+.release:hover {
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
+.release-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.release-head h2 {
+  font-size: 32px;
+}
+
+.release .tag {
+  padding: 2px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.release .tag.first {
+  background: var(--matcha-soft);
+  color: var(--ink);
+}
+
+.release-meta {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.release h3 {
+  margin-top: 24px;
+  color: var(--link);
+  font-size: 17px;
+}
+
+.release ul {
+  margin: 8px 0 0;
+  padding-left: 1.3em;
+}
+
+.release-meta + ul {
+  margin-top: 20px;
+}
+
+.release li + li {
+  margin-top: 6px;
+}
+
+.release li::marker {
+  color: var(--brand);
+}
+
+/* Under the install box on the home page: the newest version, and the way
+   to the changelog. */
+.version-line {
+  margin-top: 20px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .page-head img {
+    width: 120px;
+  }
+
+  .releases {
+    padding-bottom: 56px;
+  }
+
+  .release {
+    padding: 22px 20px 26px;
+  }
+
+  .release-head h2 {
+    font-size: 28px;
+  }
+}
+
 @media (max-width: 860px) {
   .hero {
     grid-template-columns: 1fr;
@@ -774,6 +908,18 @@ footer .contact {
   .wide img {
     width: 200px;
     margin-inline: auto;
+  }
+}
+
+/* Between phone and computer the top bar's links need the room: the cat
+   stands for the name, as on phones, and the links sit a little closer. */
+@media (min-width: 641px) and (max-width: 860px) {
+  .brand span {
+    display: none;
+  }
+
+  .top nav {
+    gap: 16px;
   }
 }
 

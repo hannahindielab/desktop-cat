@@ -98,8 +98,9 @@ const coatOf = (prefs: Prefs): Coat =>
 const cushionOf = (prefs: Prefs): Cushion =>
   CUSHIONS.find(cushion => cushion.id === prefs.cushion)?.id ?? DEFAULT_CUSHION
 const NO_PLACE = 'none'
-const placeOf = (prefs: Prefs): Place =>
-  (Object.keys(PLACE_ART) as PlaceName[]).find(name => name === prefs.place) ?? NO_PLACE
+/** A place this copy has things for: none in a copy without them, nor one an older version knew. */
+const isPlace = (at: unknown): at is PlaceName => (Object.keys(PLACE_ART) as unknown[]).includes(at)
+const placeOf = (prefs: Prefs): Place => (isPlace(prefs.place) ? prefs.place : NO_PLACE)
 const languageOf = (prefs: Prefs) => pickLanguage(prefs.language, systemLanguages(), Object.keys(TABLES))
 
 const PRAISE_CHECK_MS = 2000
@@ -140,7 +141,7 @@ const POSES = {
 
 /** Every pose in this coat, dressed for where the cat is: in a place, on the place's own cushion. */
 const posesNow = (wearing: Coat, lyingOn: Cushion, at: Place) =>
-  at === NO_PLACE ? posesOn(wearing, cushionColours(lyingOn)) : posesOn(wearing, PLACE_ART[at].cushion, at)
+  isPlace(at) ? posesOn(wearing, PLACE_ART[at].cushion, at) : posesOn(wearing, cushionColours(lyingOn))
 
 /** A pose as the cat in this coat strikes it, on its cushion, dressed for where it is, and named. */
 function look(wearing: Coat, lyingOn: Cushion, at: Place, name: keyof typeof POSES, say: Say) {
@@ -202,6 +203,11 @@ async function report($: EngineInterface, next: Mood, ended: boolean) {
         callsAgain,
         sadAt,
         movedOn,
+        // The Claude desktop app's own id for this conversation, which its
+        // links open: a click on the desktop cat waiting on the person brings
+        // them here. The app sets it for the conversations it runs; a terminal
+        // has none.
+        appSession: await $.env.get('CLAUDE_CODE_HOST_SESSION_ID'),
       }),
     )
   }

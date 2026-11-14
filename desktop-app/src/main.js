@@ -3,6 +3,7 @@ const {
   BrowserWindow,
   Menu,
   Tray,
+  dialog,
   ipcMain,
   nativeImage,
   nativeTheme,
@@ -13,7 +14,10 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 
-const { hasNewCall, isTimeToCallAgain, pickMood, readSessions, wantsCallAgain } = require('./mood')
+const { chatToOpen, hasNewCall, isTimeToCallAgain, pickMood, readSessions, wantsCallAgain } = require('./mood')
+const { autoUpdater } = require('electron-updater')
+const { TAKES_PUBLIC_VERSIONS } = require('./edition')
+const { keepUpToDate } = require('./updates')
 const {
   clearOldPraise,
   createPraiseBox,
@@ -74,6 +78,12 @@ const DEFAULTS = {
   cansShown: true,
   canLabel: CAN_LABELS[0].id,
   canFood: CAN_FOODS[0].id,
+  // Once a day the cat looks on GitHub for a new version of itself, and asks
+  // before it updates (the menu's 自動檢查更新).
+  autoUpdate: true,
+  // When it last looked, and the version the person chose to skip.
+  updateLookedAt: 0,
+  updateSkipped: null,
 }
 const REFRESH_EVERY_MS = 5000
 const AFTER_CHANGE_MS = 60
@@ -95,6 +105,9 @@ const TIP_PAGES = {
   'zh-Hant': 'https://p.ecpay.com.tw/34D38BD',
   other: 'https://ko-fi.com/hannahindielab',
 }
+// The Claude desktop app's own link to one of its conversations, as its menu
+// on the taskbar opens them: the app comes forward, showing that conversation.
+const chatLink = appSession => `claude://code/continue?session=${encodeURIComponent(appSession)}`
 
 let win = null
 let lookWin = null
@@ -102,9 +115,14 @@ let lookWin = null
 let overlay = null
 let isOverlayReady = false
 let tray = null
+// Looks for new versions and puts them in (src/updates.js).
+let updates = null
 let settings = { ...DEFAULTS }
 let dragOffset = null
 let shownMood = null
+// Whether a click on the cat opens the conversation waiting on the person, as
+// the cat was last told.
+let shownOpensChat = null
 // When the cat last meowed, or began waiting on the person.
 let meowedAt = 0
 // A pat on the head cheers up a cat that was sad before it.
@@ -126,6 +144,9 @@ function loadSettings() {
   } catch {
     settings = { ...DEFAULTS }
   }
+
+  // Kept by 1.26.0, which downloaded new versions without asking: no use now.
+  delete settings.updateReady
 
   shownSize = settings.size
 }
@@ -236,6 +257,67 @@ function setOpenAtLogin(isOn) {
   settings.openAtLogin = isOn
   app.setLoginItemSettings({ openAtLogin: isOn })
   saveSettings()
+}
+
+function setAutoUpdate(isOn) {
+  settings.autoUpdate = isOn
+  saveSettings()
+
+  if (isOn) {
+    updates?.turnedOn()
+  }
+}
+
+// The person's choices in the window that tells of a new version, in its
+// buttons' order: as Sparkle and WinSparkle ask it, the yes on the right.
+const UPDATE_ANSWERS = ['skip', 'later', 'install']
+
+/** Tells the person of a new version, in Windows' own window, and answers
+    with what they chose. Closing the window is "later". */
+async function askToUpdate(newVersion) {
+  const { response } = await dialog.showMessageBox({
+    type: 'info',
+    title: t('app.name'),
+    message: t('update.title'),
+    detail: `${t('update.versions', { version: newVersion, current: app.getVersion() })}\n\n${t('update.overwrites')}`,
+    buttons: UPDATE_ANSWERS.map(answer => t(`update.${answer}`)),
+    defaultId: UPDATE_ANSWERS.indexOf('install'),
+    cancelId: UPDATE_ANSWERS.indexOf('later'),
+    // Plain buttons, not Windows' larger links.
+    noLink: true,
+  })
+
+  return UPDATE_ANSWERS[response] ?? 'later'
+}
+
+/** Starts looking for new versions, once a day, if the menu allows it. Only
+    the installed public copy does: one run from its source has nothing to
+    update, and a copy with places never takes a public version (edition.js). */
+function startUpdates() {
+  if (!TAKES_PUBLIC_VERSIONS) {
+    return
+  }
+
+  updates = keepUpToDate({
+    updater: autoUpdater,
+    version: app.getVersion(),
+    isOn: () => settings.autoUpdate && app.isPackaged,
+    ask: askToUpdate,
+    store: {
+      get: () => ({ lookedAt: settings.updateLookedAt, skippedVersion: settings.updateSkipped }),
+      set: change => {
+        if ('lookedAt' in change) {
+          settings.updateLookedAt = change.lookedAt
+        }
+
+        if ('skippedVersion' in change) {
+          settings.updateSkipped = change.skippedVersion
+        }
+
+        saveSettings()
+      },
+    },
+  })
 }
 
 // The place's sound goes with the cat's: 開啟音效 off quiets both.
@@ -394,6 +476,10 @@ function buildMenu() {
   // The switches and the sound; how the cat and its cans look has its own
   // window, and where the cat is comes right under it.
   return Menu.buildFromTemplate([
+    // A new version on its way down, after the person's yes: said, not clicked.
+    ...(updates?.isDownloading()
+      ? [{ label: t('menu.downloadingUpdate'), enabled: false }, { type: 'separator' }]
+      : []),
     // A tick shows whether the cat is out, and the words stay the same, as
     // Windows asks of a menu item that is on or off.
     {
@@ -466,6 +552,18 @@ function buildMenu() {
       enabled: app.isPackaged,
       click: item => setOpenAtLogin(item.checked),
     },
+    // Only in the copy that takes public versions: the others never look.
+    ...(TAKES_PUBLIC_VERSIONS
+      ? [
+          {
+            label: t('menu.autoCheckUpdates'),
+            type: 'checkbox',
+            checked: settings.autoUpdate,
+            enabled: app.isPackaged,
+            click: item => setAutoUpdate(item.checked),
+          },
+        ]
+      : []),
     // A globe beside it, and each language in its own words, so someone who
     // can't read the menu yet still finds their way.
     {
@@ -676,6 +774,15 @@ function refreshMood() {
     win.webContents.send('cat:mood', mood)
   }
 
+  // Waiting on the person in a conversation the Claude app can open: a click
+  // on the cat, anywhere, opens it.
+  const opensChat = mood === 'calling' && chatToOpen(sessions, now) !== null
+
+  if (opensChat !== shownOpensChat) {
+    shownOpensChat = opensChat
+    win.webContents.send('cat:opens-chat', opensChat)
+  }
+
   if (hasNewCall(sessions, seenCalls) || (isTimeToCallAgain(mood, meowedAt, now) && wantsCallAgain(sessions, now))) {
     meowedAt = now
     win.webContents.send('cat:meow')
@@ -792,9 +899,22 @@ function connectCat() {
     }),
   )
   ipcMain.on(
+    'cat:open-chat',
+    fromCat(() => {
+      const now = Date.now()
+      const chat = chatToOpen(readSessions(SESSIONS_DIR, now), now)
+
+      // Answered or gone since the click began: nothing left to open.
+      if (chat !== null) {
+        shell.openExternal(chatLink(chat)).catch(() => {})
+      }
+    }),
+  )
+  ipcMain.on(
     'cat:ready',
     fromCat(() => {
       shownMood = null
+      shownOpensChat = null
       shownCans = null
       sendSound()
       const prefs = readPrefs(PREFS_FILE)
@@ -891,6 +1011,7 @@ function start() {
   createWindow()
   createTray()
   watchSessions()
+  startUpdates()
 
   // The folder may have moved since this was turned on.
   if (settings.openAtLogin && app.isPackaged) {

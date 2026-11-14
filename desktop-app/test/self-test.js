@@ -47,12 +47,39 @@ BrowserWindow.prototype.setAlwaysOnTop = function setAlwaysOnTop(flag, level, ..
 }
 const BEHIND_TASKBAR = [undefined, 'floating', 'torn-off-menu', 'modal-panel', 'main-menu', 'status']
 
+// The updater, answered here: the tests never reach GitHub.
+const { autoUpdater } = require('electron-updater')
+const updaterCalls = []
+autoUpdater.checkForUpdates = async () => {
+  updaterCalls.push('look')
+  return null
+}
+autoUpdater.quitAndInstall = (...args) => updaterCalls.push(['putIn', ...args])
+// A download that comes down when the test says so.
+let finishDownload = null
+autoUpdater.downloadUpdate = () => {
+  updaterCalls.push('download')
+  return new Promise(resolve => {
+    finishDownload = resolve
+  })
+}
+// Windows' own window that tells of a new version, answered here in turn
+// (by button: 0 skip, 1 later, 2 install).
+const updateWindows = []
+const updateAnswers = []
+require('electron').dialog.showMessageBox = async (...args) => {
+  updateWindows.push(args.at(-1))
+  return { response: updateAnswers.shift() ?? 1, checkboxChecked: false }
+}
+
 process.env.DESKTOP_CAT_SESSIONS_DIR = sessions
 app.setPath('userData', path.join(root, 'user-data'))
 // A computer set to Traditional Chinese, wherever the test runs: the cat speaks Chinese.
 app.getPreferredSystemLanguages = () => ['zh-TW']
 require('../src/main.js')
 const { t } = require('../src/i18n')
+// Only the public copy looks for new versions; a copy with places never does.
+const { TAKES_PUBLIC_VERSIONS } = require('../src/edition')
 
 // The places, in a copy that has them. The public copy leaves them out for
 // now, and their checks with them (self-test-scenes.js).
@@ -60,10 +87,10 @@ const HAS_PLACES = require('../src/scenes').PLACES.length > 0
 const scenes = HAS_PLACES ? require('./self-test-scenes') : null
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
-const report = (id, mood, updatedAt = Date.now(), ended = false, calledAt = 0, sadAt = 0) =>
+const report = (id, mood, updatedAt = Date.now(), ended = false, calledAt = 0, sadAt = 0, appSession = undefined) =>
   fs.writeFileSync(
     path.join(sessions, `${id}.json`),
-    JSON.stringify({ mood, updatedAt, ended, calledAt, sadAt, movedOn: false }),
+    JSON.stringify({ mood, updatedAt, ended, calledAt, sadAt, movedOn: false, appSession }),
   )
 
 async function waitFor(check, what, ms = 5000) {
@@ -357,6 +384,49 @@ async function run() {
   await waitFor(async () => (await inPage('document.body.dataset.over')) === 'false', 'hover to leave')
   console.log('ok - the cat is grabbed on its body and not on the gaps')
 
+  // Waiting on the person in a conversation the Claude app can open: a click
+  // anywhere on the cat, its head too, opens it there, through the app's own
+  // link; only moving off while pressed carries the cat, and petting waits.
+  const LINK = 'claude://code/continue?session=local_cat-test-1'
+  const opensChat = () => inPage(`document.body.classList.contains('opens-chat')`)
+  const opened = openedPages.length
+  report('asking', 'calling', Date.now(), false, Date.now(), 0, 'local_cat-test-1')
+  await expectMood('calling', 'a question waiting in the Claude app')
+  await waitFor(opensChat, 'a click on the cat to open the conversation')
+  for (const [count, spot] of [SPOTS.head, SPOTS.chest, SPOTS.tail].entries()) {
+    tap(spot)
+    await waitFor(() => openedPages.length === opened + count + 1, 'the conversation to open')
+    assert.equal(openedPages.at(-1), LINK)
+  }
+  assert.equal(await pose(), 'calling', 'a click on the head opens the conversation instead of petting')
+  assert.equal(await isDragged(), false)
+  console.log('ok - waiting on the person, a click anywhere on the cat opens the conversation in the Claude app')
+
+  press(SPOTS.chest)
+  page.sendInputEvent({ type: 'mouseMove', x: SPOTS.chest.x + 3, y: SPOTS.chest.y - 2, button: 'left', modifiers: ['leftButtonDown'] })
+  await wait(200)
+  assert.equal(await isDragged(), false, 'a hand that shakes a little is still clicking')
+  page.sendInputEvent({ type: 'mouseMove', x: SPOTS.chest.x + 24, y: SPOTS.chest.y, button: 'left', modifiers: ['leftButtonDown'] })
+  await waitFor(isDragged, 'moving off while pressed to pick the cat up')
+  release({ x: SPOTS.chest.x + 24, y: SPOTS.chest.y })
+  await waitFor(async () => !(await isDragged()), 'the cat to be put down')
+  await wait(200)
+  assert.equal(openedPages.length, opened + 3, 'carrying the cat opens nothing')
+  console.log('ok - pressed and moved, the waiting cat is carried as ever')
+
+  report('asking', 'calling', Date.now(), false, Date.now())
+  await waitFor(async () => !(await opensChat()), 'nothing to open for a terminal')
+  press(SPOTS.chest)
+  await waitFor(isDragged, 'from a terminal, pressing the chest picks the cat up at once')
+  release(SPOTS.chest)
+  await waitFor(async () => !(await isDragged()), 'the cat to be put down')
+  assert.equal(openedPages.length, opened + 3, 'a terminal has nothing to open')
+  report('asking', 'resting', Date.now(), true)
+  await expectMood('working', 'answered, the cat back to the work going on')
+  page.sendInputEvent({ type: 'mouseMove', x: 1, y: 1 })
+  await waitFor(async () => (await inPage('document.body.dataset.over')) === 'false', 'hover to leave')
+  console.log('ok - from a terminal the waiting cat is petted and carried as before')
+
   const saved = JSON.parse(fs.readFileSync(path.join(root, 'user-data', 'settings.json'), 'utf8'))
   assert.deepEqual(
     [saved.x, saved.y],
@@ -444,6 +514,8 @@ async function run() {
       '—',
       '永遠在最上層',
       '開機自動啟動',
+      // Only in the copy that takes public versions.
+      ...(TAKES_PUBLIC_VERSIONS ? ['自動檢查更新'] : []),
       '語言',
       '—',
       '請貓貓吃罐罐',
@@ -563,6 +635,71 @@ async function run() {
   item = await openMenu()
   assert.equal(item('Claude 貓語氣').checked, true, '/cat-voice switching it back on shows here')
   console.log('ok - the voice switch is kept beside the coat, and follows /cat-voice')
+
+  // Updates, in the public copy: on until switched off, kept with the
+  // settings. A new version is asked about first, in Windows' own window, and
+  // comes down only after the person's yes.
+  const settingsNow = () => JSON.parse(fs.readFileSync(path.join(root, 'user-data', 'settings.json'), 'utf8'))
+
+  if (TAKES_PUBLIC_VERSIONS) {
+    assert.equal(item('自動檢查更新').type, 'checkbox')
+    assert.equal(item('自動檢查更新').checked, true, 'on until switched off')
+    item('自動檢查更新').click({ checked: false })
+    assert.equal(settingsNow().autoUpdate, false, 'kept off')
+    item = await openMenu()
+    assert.equal(item('自動檢查更新').checked, false)
+    item('自動檢查更新').click({ checked: true })
+    assert.equal(settingsNow().autoUpdate, true, 'and on again')
+    assert.deepEqual(updaterCalls, [], 'a copy run from its source never looks')
+
+    // 略過此版本: kept, and that version is not asked about again.
+    updateAnswers.push(0)
+    autoUpdater.emit('update-available', { version: '999.9.8' })
+    await waitFor(() => settingsNow().updateSkipped === '999.9.8', 'the skipped version kept')
+    const [asked] = updateWindows
+    assert.deepEqual(
+      { title: asked.title, message: asked.message, detail: asked.detail, buttons: asked.buttons },
+      {
+        title: '桌面貓',
+        message: '桌面貓有新版本',
+        detail: `有新版 999.9.8 可以更新（你現在是 ${app.getVersion()}），要現在更新嗎？\n\n如果你自己改過桌面貓的程式，更新會把改動蓋掉。`,
+        buttons: ['略過此版本', '稍後提醒我', '安裝更新'],
+      },
+      "Windows' own window, in the person's words",
+    )
+    assert.equal(asked.buttons[asked.defaultId], '安裝更新', 'Enter installs')
+    assert.equal(asked.buttons[asked.cancelId], '稍後提醒我', 'closing the window is later')
+    assert.equal(asked.noLink, true, 'plain buttons')
+    autoUpdater.emit('update-available', { version: '999.9.8' })
+    await wait(100)
+    assert.equal(updateWindows.length, 1, 'a skipped version is not asked about again')
+    assert.deepEqual(updaterCalls, [], 'nothing came down')
+
+    // 安裝更新: it comes down, the menu says so, then the cat goes in as it.
+    updateAnswers.push(2)
+    autoUpdater.emit('update-available', { version: '999.9.9' })
+    await waitFor(() => updaterCalls.includes('download'), 'the download')
+    item = await openMenu()
+    assert.deepEqual(
+      lastMenu.slice(0, 3).map(entry => entry.label ?? '—'),
+      ['正在下載更新…', '—', '顯示貓咪'],
+      'said at the top while it comes down',
+    )
+    assert.equal(item('正在下載更新…').enabled, false, 'said, not clicked')
+    autoUpdater.emit('update-downloaded', { version: '999.9.9' })
+    finishDownload([])
+    assert.deepEqual(updaterCalls, ['download', ['putIn', true, true]], 'quietly, and the cat comes back as it')
+    await wait(50)
+    item = await openMenu()
+    assert.equal(lastMenu[0].label, '顯示貓咪', 'done: nothing about updates at the top')
+    console.log('ok - new versions are asked about first, and come down only after a yes')
+  } else {
+    assert.equal(item('自動檢查更新'), undefined, 'no switch in a copy with places')
+    autoUpdater.emit('update-available', { version: '999.9.9' })
+    await wait(100)
+    assert.deepEqual([updateWindows, updaterCalls], [[], []], 'never asks, never looks, never downloads')
+    console.log('ok - a copy with places never takes a public version')
+  }
 
   // The Siamese: cream, with soft points and blue eyes.
   await inLook('document.querySelector("[data-look=coat] [data-value=siamese]").click()')

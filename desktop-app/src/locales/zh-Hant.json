@@ -10,9 +10,19 @@
     "voice": "Claude 貓語氣",
     "alwaysOnTop": "永遠在最上層",
     "openAtLogin": "開機自動啟動",
+    "autoCheckUpdates": "自動檢查更新",
+    "downloadingUpdate": "正在下載更新…",
     "language": "語言",
     "tip": "請貓貓吃罐罐",
     "quit": "離開"
+  },
+  "update": {
+    "title": "桌面貓有新版本",
+    "versions": "有新版 {{version}} 可以更新（你現在是 {{current}}），要現在更新嗎？",
+    "overwrites": "如果你自己改過桌面貓的程式，更新會把改動蓋掉。",
+    "skip": "略過此版本",
+    "later": "稍後提醒我",
+    "install": "安裝更新"
   },
   "language": {
     "system": "使用系統設定",

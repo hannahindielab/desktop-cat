@@ -59,13 +59,19 @@
         pointer-events: none;
       }
 
-      body.dragging #cat svg * {
-        cursor: grabbing;
-      }
-
       /* The places that like being touched answer with a hand, not a grab. */
       body[data-zone] #cat svg * {
         cursor: pointer;
+      }
+
+      /* Waiting on the person, all of the cat is a way to the conversation. */
+      body.opens-chat #cat svg * {
+        cursor: pointer;
+      }
+
+      /* Last, so a cat picked up by its head still shows the grab. */
+      body.dragging #cat svg * {
+        cursor: grabbing;
       }
 
       /* The cans stand on the desk just right of the tail, set in like the

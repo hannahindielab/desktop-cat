@@ -55,6 +55,9 @@ const FRAMES_SHOWN = 6
 
 // Rubbing back and forth counts as another touch every so far.
 const STROKE_PIXELS = 160
+// Waiting on the person, a press let go within this many pixels of where it
+// began is a click, as Windows counts one; moved further, it picks the cat up.
+const CLICK_PIXELS = 4
 const REACTION_MS = 2200
 // Done with the work, the cat dozes sitting up, and lies down if nothing comes up.
 const LIE_DOWN_AFTER_MS = 5000
@@ -75,6 +78,10 @@ const JELLY = {
 let isOverCat = false
 let isDragging = false
 let petting = null
+// Pressed on a cat waiting on the person: not yet a click, nor a carry.
+let pressed = null
+// While the cat waits on the person in a conversation the Claude app can open.
+let opensChat = false
 let currentMood = 'resting'
 let reactionTimer = null
 let lieDownTimer = null
@@ -400,6 +407,15 @@ function startCarrying(x, y) {
   }
 }
 
+/** Picks the cat up to carry it, with a faint mew. */
+function pickUp(x, y) {
+  isDragging = true
+  document.body.classList.add('dragging')
+  startCarrying(x, y)
+  Sound.shot('mew')
+  window.desktopCat.dragStart()
+}
+
 function setOverCat(isOver) {
   if (isOver !== isOverCat) {
     isOverCat = isOver
@@ -424,6 +440,12 @@ window.addEventListener('pointermove', event => {
   if (isDragging) {
     carriedTo = { x: event.screenX, y: event.screenY }
     window.desktopCat.dragMove()
+  } else if (pressed !== null) {
+    // Moved off while still pressed: carrying the cat, not a click.
+    if (Math.abs(event.clientX - pressed.x) > CLICK_PIXELS || Math.abs(event.clientY - pressed.y) > CLICK_PIXELS) {
+      pressed = null
+      pickUp(event.screenX, event.screenY)
+    }
   } else if (petting !== null) {
     petting.travelled +=
       Math.abs(event.clientX - petting.x) + Math.abs(event.clientY - petting.y)
@@ -446,27 +468,39 @@ window.addEventListener('pointerdown', event => {
 
   document.documentElement.setPointerCapture(event.pointerId)
   hideHint()
+
+  // Waiting on the person: a click anywhere on the cat, its head too, opens
+  // the conversation, and only moving off while pressed picks the cat up.
+  if (opensChat) {
+    // Within the window, which stays put until the cat is picked up.
+    pressed = { x: event.clientX, y: event.clientY }
+    return
+  }
+
   const zone = zoneAt(event.clientX, event.clientY)
 
   if (zone !== null) {
     petting = { zone, x: event.clientX, y: event.clientY, travelled: 0 }
     touch(zone)
   } else {
-    isDragging = true
-    document.body.classList.add('dragging')
-    startCarrying(event.screenX, event.screenY)
-    Sound.shot('mew')
-    window.desktopCat.dragStart()
+    pickUp(event.screenX, event.screenY)
   }
 })
 
 function endPress(event) {
+  // Let go where it was pressed: a click.
+  const isClick = pressed !== null && event.type === 'pointerup'
+  pressed = null
   petting = null
 
   if (isDragging) {
     isDragging = false
     document.body.classList.remove('dragging')
     window.desktopCat.dragEnd()
+  }
+
+  if (isClick) {
+    window.desktopCat.openChat()
   }
 
   notePointer(event.clientX, event.clientY)
@@ -476,7 +510,7 @@ window.addEventListener('pointerup', endPress)
 window.addEventListener('pointercancel', endPress)
 
 document.documentElement.addEventListener('mouseleave', () => {
-  if (!isDragging && petting === null) {
+  if (!isDragging && petting === null && pressed === null) {
     setOverCat(false)
     delete document.body.dataset.zone
   }
@@ -546,6 +580,10 @@ window.desktopCat.onSound(sound => {
   Ambience.configure(sound)
 })
 window.desktopCat.onMeow(() => Sound.shot('meow'))
+window.desktopCat.onOpensChat(isOn => {
+  opensChat = isOn
+  document.body.classList.toggle('opens-chat', isOn)
+})
 window.desktopCat.onCoat(wear)
 window.desktopCat.onCushion(lieOn)
 window.desktopCat.onPlace(goTo)
